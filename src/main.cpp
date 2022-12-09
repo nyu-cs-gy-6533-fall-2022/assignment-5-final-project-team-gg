@@ -27,6 +27,8 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+#include "object.h";
+
 // VertexBufferObject wrapper
 BufferObject VBO;
 // VertexBufferObject wrapper
@@ -250,7 +252,7 @@ void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm
             // vertex position
             sphereVertexPos.x = xy * cosf(sectorAngle);
             sphereVertexPos.y = xy * sinf(sectorAngle);
-            vertex.push_back(sphereVertexPos);
+            vertex.push_back(sphereVertexPos); 
 
             // normalized vertex normal
             normal.push_back(sphereVertexPos / sphereRadius);
@@ -424,7 +426,7 @@ int main(void)
     // 1: generate sphere, 0: load OFF model
 #if 1
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    sphere(1.0f, 20, 10, V, VN, T);
+    sphere(1.0f, 30, 30, V, VN, T);
     VBO.update(V);
     NBO.update(VN);
     IndexBuffer.update(T);
