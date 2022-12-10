@@ -292,6 +292,67 @@ void sphere(float sphereRadius, int sectorCount, int stackCount,
 }
 
 
+void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+    // init variables
+    vertices.resize(0);
+    normals.resize(0);
+    indices.resize(0);
+    textCoords.resize(0);
+    // temp variables
+    glm::vec3 sphereVertexPos;
+    glm::vec2 textureCoordinate;
+    float xy;
+    float sectorStep = 2.0f * M_PI / float(sectorCount);
+    float stackStep = 2.0f * M_PI / float(stackCount);
+    float sectorAngle, stackAngle;
+
+    // compute vertices and normals
+    for (int i = 0; i <= stackCount; ++i) {
+        stackAngle = M_PI / 2.0f - i * stackStep;
+        sphereVertexPos.y = innerRadius * sinf(stackAngle);
+
+        for (int j = 0; j <= sectorCount; ++j) {
+            sectorAngle = j * sectorStep;
+
+            // vertex position
+            sphereVertexPos.x = sinf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
+            sphereVertexPos.y = cosf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
+            vertices.push_back(sphereVertexPos);
+
+            // normalized vertex normal
+            normals.push_back(glm::normalize(sphereVertexPos - glm::vec3(outerRadius * sinf(sectorAngle), 0.0f, outerRadius * cosf(sectorAngle))));
+
+            // calculate texture coordinate
+            textureCoordinate.x = float(j) / sectorCount;
+            textureCoordinate.y = float(i) / stackCount;
+            textCoords.push_back(textureCoordinate);
+        }
+    }
+
+    // compute triangle indices
+    int k1, k2;
+    for (int i = 0; i < stackCount; ++i) {
+        k1 = i * (sectorCount + 1);
+        k2 = k1 + sectorCount + 1;
+
+        for (int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
+            // 2 triangles per sector excluding first and last stacks
+            // k1 => k2 => k1+1
+            if (i != 0) {
+                indices.push_back(glm::ivec3(k1, k2, k1 + 1));
+            }
+            // k1+1 => k2 => k2+1
+            if (i != (stackCount - 1)) {
+                indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+            }
+        }
+    }
+
+}
+
+
 void cylinder(float topRadius, float baseRadius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
@@ -379,10 +440,6 @@ void cylinder(float topRadius, float baseRadius, int sectorCount, float height,
 
         }
     }
-
-
-
-
 
     int k1 = 0;                         // 1st vertex index at base
     int k2 = sectorCount + 1;           // 1st vertex index at top
@@ -571,13 +628,16 @@ int main(void)
     // 1: generate sphere, 0: load OFF model
 #if 1
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    int objNum = 1;
+    int objNum = 2;
     switch (objNum){
     case 0:
         sphere(1.0f, 30, 30, V, VN, T, TC);
         break;
     case 1:
         cylinder(1.0f, 2.0f, 30, 3, V, VN, T, TC);
+        break;
+    case 2:
+        torus(1.0f, 0.5f, 30, 30, V, VN, T, TC);
         break;
 
     }
@@ -715,8 +775,8 @@ int main(void)
         
         // Draw a triangle
         //glDrawArrays(GL_TRIANGLES, 0, V.size());
-        glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
-        //glDrawElements(GL_LINES, T.size() * 3, GL_UNSIGNED_INT, 0);
+        //glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_LINES, T.size() * 3, GL_UNSIGNED_INT, 0);
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
