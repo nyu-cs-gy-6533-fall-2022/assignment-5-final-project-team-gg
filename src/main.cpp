@@ -318,10 +318,11 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
 
             // vertex position
             sphereVertexPos.x = sinf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
-            sphereVertexPos.y = cosf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
+            sphereVertexPos.z = cosf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
             vertices.push_back(sphereVertexPos);
 
             // normalized vertex normal
+            std::cout << sphereVertexPos.x << sphereVertexPos.y << sphereVertexPos.z << std::endl;
             normals.push_back(glm::normalize(sphereVertexPos - glm::vec3(outerRadius * sinf(sectorAngle), 0.0f, outerRadius * cosf(sectorAngle))));
 
             // calculate texture coordinate
@@ -340,13 +341,10 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
         for (int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
             // 2 triangles per sector excluding first and last stacks
             // k1 => k2 => k1+1
-            if (i != 0) {
-                indices.push_back(glm::ivec3(k1, k2, k1 + 1));
-            }
+            indices.push_back(glm::ivec3(k1, k2, k1 + 1));
             // k1+1 => k2 => k2+1
-            if (i != (stackCount - 1)) {
-                indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
-            }
+            indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+
         }
     }
 
@@ -775,8 +773,8 @@ int main(void)
         
         // Draw a triangle
         //glDrawArrays(GL_TRIANGLES, 0, V.size());
-        //glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
-        glDrawElements(GL_LINES, T.size() * 3, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
+        //glDrawElements(GL_LINES, T.size() * 3, GL_UNSIGNED_INT, 0);
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
