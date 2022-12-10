@@ -292,7 +292,7 @@ void sphere(float sphereRadius, int sectorCount, int stackCount,
 }
 
 
-void cylinder(float sphereRadius, int sectorCount, float height,
+void cylinder(float topRadius, float baseRadius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
     //
@@ -328,6 +328,7 @@ void cylinder(float sphereRadius, int sectorCount, float height,
             float uy = unitCircleVertices[k + 1];
             float uz = unitCircleVertices[k + 2];
             // position vector
+            float sphereRadius = (i == 0) ? baseRadius : topRadius;
             cylinderVertexPos.x = ux * sphereRadius;
             cylinderVertexPos.y = h;
             cylinderVertexPos.z = uz * sphereRadius;
@@ -362,6 +363,7 @@ void cylinder(float sphereRadius, int sectorCount, float height,
             float ux = unitCircleVertices[k];
             float uz = unitCircleVertices[k + 2];
             // position vector
+            float sphereRadius = (i == 0) ? baseRadius : topRadius;
             cylinderVertexPos.x = ux * sphereRadius;
             cylinderVertexPos.y = h;
             cylinderVertexPos.z = uz * sphereRadius;
@@ -575,7 +577,7 @@ int main(void)
         sphere(1.0f, 30, 30, V, VN, T, TC);
         break;
     case 1:
-        cylinder(1.0f, 30, 3, V, VN, T, TC);
+        cylinder(1.0f, 2.0f, 30, 3, V, VN, T, TC);
         break;
 
     }
