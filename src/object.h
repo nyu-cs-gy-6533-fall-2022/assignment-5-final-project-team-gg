@@ -3,12 +3,14 @@
 
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
+#include <vector>
 
 class Object{
 public:
-	Object(glm::vec3 col, bool reflecting = false, float ambientFactor = 0.2f, float specExponent = 50.0f) { 
+	Object(glm::vec3 col = glm::vec3(1.0, 1.0, 0.0), bool reflecting = false, bool refracting = false, float ambientFactor = 0.2f, float specExponent = 50.0f) {
 		color = col; 
 		reflect = reflecting;
+		refract = refracting;
 		ambient = ambientFactor; 
 		specularEx = specExponent; 
 	};
@@ -16,7 +18,6 @@ public:
 	// output parameters: location of the intersection, object normal
 	// PURE VIRTUAL FUNCTION: has to be implemented in all child classes.
 	virtual float intersect(const glm::vec3& rayOrigin, const glm::vec3& rayDir, glm::vec3& intersectPos, glm::vec3& normal) = 0;
-    
 
 	const glm::vec3& Color() { return color; };
 	float AmbientFactor() { return ambient; };
@@ -31,6 +32,13 @@ private:
 	float specularEx;
 	// is this object reflecting?
 	bool reflect;
+	bool refract;
+
+	// buffer
+	std::vector<glm::vec3> vertices;
+	std::vector<glm::vec3> normals;
+	std::vector<glm::ivec3> indices;
+	std::vector<glm::vec2> texCoords;
 };
 
 
