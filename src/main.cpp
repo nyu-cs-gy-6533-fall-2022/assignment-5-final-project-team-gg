@@ -303,7 +303,7 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
     // temp variables
     glm::vec3 sphereVertexPos;
     glm::vec2 textureCoordinate;
-    float xy;
+
     float sectorStep = 2.0f * M_PI / float(sectorCount);
     float stackStep = 2.0f * M_PI / float(stackCount);
     float sectorAngle, stackAngle;
@@ -349,6 +349,8 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
     }
 
 }
+
+
 
 
 void cylinder(float topRadius, float baseRadius, int sectorCount, float height,
@@ -467,17 +469,26 @@ void cylinder(float topRadius, float baseRadius, int sectorCount, float height,
     }
 
     // indices for the top surface
-    for (int i = 0, k = topCenterIndex + 1; i < sectorCount; ++i, ++k)
-    {
-        if (i < sectorCount - 1)
+    if (topRadius != 0) {
+        for (int i = 0, k = topCenterIndex + 1; i < sectorCount; ++i, ++k)
         {
-            indices.push_back(glm::ivec3(topCenterIndex, k, k + 1));
-        }
-        else // last triangle
-        {
-            indices.push_back(glm::ivec3(topCenterIndex, k, topCenterIndex + 1));
+            if (i < sectorCount - 1)
+            {
+                indices.push_back(glm::ivec3(topCenterIndex, k, k + 1));
+            }
+            else // last triangle
+            {
+                indices.push_back(glm::ivec3(topCenterIndex, k, topCenterIndex + 1));
+            }
         }
     }
+}
+
+
+void cone(float radius, int sectorCount, float height,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+    cylinder(0.0f, radius, sectorCount, height, vertices, normals, indices, textCoords);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -626,17 +637,19 @@ int main(void)
     // 1: generate sphere, 0: load OFF model
 #if 1
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    int objNum = 2;
+    int objNum = 3;
     switch (objNum){
     case 0:
         sphere(1.0f, 30, 30, V, VN, T, TC);
         break;
     case 1:
-        cylinder(1.0f, 2.0f, 30, 3, V, VN, T, TC);
+        cylinder(0.0f, 2.0f, 30, 3, V, VN, T, TC);
         break;
     case 2:
         torus(1.0f, 0.5f, 30, 30, V, VN, T, TC);
         break;
+    case 3:
+        cone(1.0f, 30, 3.0f, V, VN, T, TC);
 
     }
     
