@@ -38,10 +38,12 @@ BufferObject IndexBuffer;
 
 // Contains the vertex positions
 std::vector<glm::vec3> V(3);
-// Contains the vertex positions
+// Contains the normal positions
 std::vector<glm::vec3> VN(3);
-// Contains the vertex positions
+// Contains the indices positions
 std::vector<glm::ivec3> T(3);
+// Contains the texture coordinate positions
+std::vector<glm::vec2> TC(2);
 
 // Last position of the mouse on click
 double xpos, ypos;
@@ -153,7 +155,7 @@ bool loadPPM(ImageRGB& img, const std::string& name) {
     return true;
 }
 
-bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vector<glm::ivec3>& tria, glm::vec3& min, glm::vec3& max)
+bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vector<glm::ivec3>& indices, glm::vec3& min, glm::vec3& max)
 {
     min.x = FLT_MAX;
     max.x = FLT_MIN;
@@ -228,13 +230,17 @@ bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vect
     return true;
 }
 
-void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, std::vector<glm::ivec3>& tria) {
+void sphere(float sphereRadius, int sectorCount, int stackCount,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
     // init variables
-    vertex.resize(0);
-    normal.resize(0);
-    tria.resize(0);
+    vertices.resize(0);
+    normals.resize(0);
+    indices.resize(0);
+    textCoords.resize(0);
     // temp variables
     glm::vec3 sphereVertexPos;
+    glm::vec2 textureCoordinate;
     float xy;
     float sectorStep = 2.0f * M_PI / float(sectorCount);
     float stackStep = M_PI / stackCount;
@@ -252,10 +258,15 @@ void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm
             // vertex position
             sphereVertexPos.x = xy * cosf(sectorAngle);
             sphereVertexPos.y = xy * sinf(sectorAngle);
-            vertex.push_back(sphereVertexPos); 
+            vertices.push_back(sphereVertexPos);
 
             // normalized vertex normal
-            normal.push_back(sphereVertexPos / sphereRadius);
+            normals.push_back(sphereVertexPos / sphereRadius);
+
+            // calculate texture coordinate
+            textureCoordinate.x = float(j) / sectorCount;
+            textureCoordinate.y = float(i) / stackCount;
+            textCoords.push_back(textureCoordinate);
         }
     }
 
@@ -269,15 +280,108 @@ void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm
             // 2 triangles per sector excluding first and last stacks
             // k1 => k2 => k1+1
             if (i != 0) {
-                T.push_back(glm::ivec3(k1, k2, k1 + 1));
+                indices.push_back(glm::ivec3(k1, k2, k1 + 1));
             }
             // k1+1 => k2 => k2+1
             if (i != (stackCount - 1)) {
-                T.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+                indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
             }
         }
     }
 
+}
+
+
+void cylinder(float sphereRadius, int sectorCount, float height,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& tria, std::vector<glm::vec2>& textCoords) {
+    //
+    float sectorStep = 2.0f * M_PI / float(sectorCount);
+    float sectorAngle;
+    std::vector<float> unitCircleVertices;
+    glm::vec3 cylinderVertexPos;
+    glm::vec2 textureCoordinate;
+
+    // init variables
+    vertices.resize(0);
+    normals.resize(0);
+    tria.resize(0);
+    textCoords.resize(0);
+
+    // get unit circle vectors on XY-plane
+    for (int i = 0; i <= sectorCount; ++i){
+        sectorAngle = i * sectorStep;
+        unitCircleVertices.push_back(cos(sectorAngle)); // x
+        unitCircleVertices.push_back(sin(sectorAngle)); // y
+        unitCircleVertices.push_back(0);                // z
+    }
+
+    // put side vertices to arrays
+    for (int i = 0; i < 2; ++i)
+    {
+        float h = -height / 2.0f + i * height;           // z value; -h/2 to h/2
+        float t = 1.0f - i;                              // vertical tex coord; 1 to 0
+
+        for (int j = 0, k = 0; j <= sectorCount; ++j, k += 3)
+        {
+            float ux = unitCircleVertices[k];
+            float uy = unitCircleVertices[k + 1];
+            float uz = unitCircleVertices[k + 2];
+            // position vector
+            cylinderVertexPos.x = ux * sphereRadius;
+            cylinderVertexPos.y = uy * sphereRadius;
+            cylinderVertexPos.z = h;
+            vertices.push_back(cylinderVertexPos);
+
+            // normal vector
+            normals.push_back(glm::vec3(ux, uy, uz));
+
+            // calculate texture coordinate
+            textureCoordinate.x = (float)j / sectorCount;
+            textureCoordinate.y = t;
+            textCoords.push_back(textureCoordinate);
+        }
+    }
+
+
+    // put base and top vertices to arrays
+    for (int i = 0; i < 2; ++i)
+    {
+        float h = -height / 2.0f + i * height;           // z value; -h/2 to h/2
+        float nz = -1 + i * 2;                           // z value of normal; -1 to 1
+
+        // center point
+        vertices.push_back(glm::vec3(0.0, 0.0, h));
+        normals.push_back(glm::vec3(0.0, 0.0, nz));
+        textCoords.push_back(glm::vec2(0.5f, 0.5f));
+
+        for (int j = 0, k = 0; j < sectorCount; ++j, k += 3)
+        {
+            float ux = unitCircleVertices[k];
+            float uy = unitCircleVertices[k + 1];
+            // position vector
+            cylinderVertexPos.x = ux * sphereRadius;
+            cylinderVertexPos.y = uy * sphereRadius;
+            cylinderVertexPos.z = h;
+            vertices.push_back(cylinderVertexPos);
+
+            // normal vector
+            normals.push_back(glm::vec3(0, 0, nz));
+
+            // texture coordinate
+            textureCoordinate.x = -ux * 0.5f + 0.5f;
+            textureCoordinate.y = -uy * 0.5f + 0.5f;
+            textCoords.push_back(textureCoordinate);
+
+        }
+    }
+
+
+
+    // the starting index for the base/top surface
+    //NOTE: it is used for generating indices later
+    int baseCenterIndex = (int)vertices.size();
+    int topCenterIndex = baseCenterIndex + sectorCount + 1; // include center vertex
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -426,7 +530,7 @@ int main(void)
     // 1: generate sphere, 0: load OFF model
 #if 1
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    sphere(1.0f, 30, 30, V, VN, T);
+    sphere(1.0f, 30, 30, V, VN, T, TC);
     VBO.update(V);
     NBO.update(VN);
     IndexBuffer.update(T);
