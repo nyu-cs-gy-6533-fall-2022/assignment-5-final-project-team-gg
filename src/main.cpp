@@ -353,7 +353,7 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
 
 
 
-void cylinder(float topRadius, float baseRadius, int sectorCount, float height,
+void truncatedCone(float topRadius, float baseRadius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
     //
@@ -495,16 +495,21 @@ void cylinder(float topRadius, float baseRadius, int sectorCount, float height,
 void cone(float radius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
-    cylinder(0.0f, radius, sectorCount, height, vertices, normals, indices, textCoords);
+    truncatedCone(0.0f, radius, sectorCount, height, vertices, normals, indices, textCoords);
 }
 
-
-void capsule(float topRadius, float baseRadius, int sectorCount, float height,
+void cylinder(float radius, int sectorCount, float height,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+    truncatedCone(radius, radius, sectorCount, height, vertices, normals, indices, textCoords);
+}
+void capsule(float topRadius, float baseRadius, int sectorCount, int stackCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
     //
     float sectorStep = 2.0f * M_PI / float(sectorCount);
-    float sectorAngle;
+    float stackStep = M_PI / float(stackCount);
+    float sectorAngle, stackAngle;
     std::vector<float> unitCircleVertices;
     glm::vec3 cylinderVertexPos;
     glm::vec2 textureCoordinate;
@@ -783,7 +788,7 @@ int main(void)
         sphere(1.0f, 30, 30, V, VN, T, TC);
         break;
     case 1:
-        cylinder(1.0f, 2.0f, 30, 3, V, VN, T, TC);
+        cylinder(1.0f, 30, 3, V, VN, T, TC);
         break;
     case 2:
         torus(1.0f, 0.5f, 30, 30, V, VN, T, TC);
