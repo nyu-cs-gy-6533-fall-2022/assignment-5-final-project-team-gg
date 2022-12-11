@@ -256,8 +256,8 @@ void sphere(float sphereRadius, int sectorCount, int stackCount,
             sectorAngle = j * sectorStep;
 
             // vertex position
-            sphereVertexPos.x = xy * cosf(sectorAngle);
-            sphereVertexPos.y = xy * sinf(sectorAngle);
+            sphereVertexPos.x = xy * sinf(sectorAngle);
+            sphereVertexPos.y = xy * cosf(sectorAngle);
             vertices.push_back(sphereVertexPos);
 
             // normalized vertex normal
@@ -301,7 +301,7 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
     indices.resize(0);
     textCoords.resize(0);
     // temp variables
-    glm::vec3 sphereVertexPos;
+    glm::vec3 torusVertexPos;
     glm::vec2 textureCoordinate;
 
     float sectorStep = 2.0f * M_PI / float(sectorCount);
@@ -311,19 +311,19 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
     // compute vertices and normals
     for (int i = 0; i <= stackCount; ++i) {
         stackAngle = M_PI / 2.0f - i * stackStep;
-        sphereVertexPos.y = innerRadius * sinf(stackAngle);
+        torusVertexPos.y = innerRadius * sinf(stackAngle);
 
         for (int j = 0; j <= sectorCount; ++j) {
             sectorAngle = j * sectorStep;
 
             // vertex position
-            sphereVertexPos.x = sinf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
-            sphereVertexPos.z = cosf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
-            vertices.push_back(sphereVertexPos);
+            torusVertexPos.x = sinf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
+            torusVertexPos.z = cosf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
+            vertices.push_back(torusVertexPos);
 
             // normalized vertex normal
-            std::cout << sphereVertexPos.x << sphereVertexPos.y << sphereVertexPos.z << std::endl;
-            normals.push_back(glm::normalize(sphereVertexPos - glm::vec3(outerRadius * sinf(sectorAngle), 0.0f, outerRadius * cosf(sectorAngle))));
+            std::cout << torusVertexPos.x << torusVertexPos.y << torusVertexPos.z << std::endl;
+            normals.push_back(glm::normalize(torusVertexPos - glm::vec3(outerRadius * sinf(sectorAngle), 0.0f, outerRadius * cosf(sectorAngle))));
 
             // calculate texture coordinate
             textureCoordinate.x = float(j) / sectorCount;
@@ -349,9 +349,6 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
     }
 
 }
-
-
-
 
 void truncatedCone(float topRadius, float baseRadius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
@@ -491,7 +488,6 @@ void truncatedCone(float topRadius, float baseRadius, int sectorCount, float hei
     }
 }
 
-
 void cone(float radius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
@@ -507,12 +503,19 @@ void capsule(float topRadius, float baseRadius, int sectorCount, int stackCount,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
     //
+    float xy;
     float sectorStep = 2.0f * M_PI / float(sectorCount);
     float stackStep = M_PI / float(stackCount);
     float sectorAngle, stackAngle;
     std::vector<float> unitCircleVertices;
-    glm::vec3 cylinderVertexPos;
+    glm::vec3 capsuleVertexPos;
     glm::vec2 textureCoordinate;
+
+    float cylinderHeight = height - topRadius - baseRadius;
+    glm::vec3 topCenter(0.0f, cylinderHeight / 2.0f, 0.0f);
+    glm::vec3 baseCenter(0.0f, -cylinderHeight / 2.0f, 0.0f);
+
+    float coneAngle = atanf((baseRadius - topRadius) / cylinderHeight);
 
     // init variables
     vertices.resize(0);
@@ -520,119 +523,118 @@ void capsule(float topRadius, float baseRadius, int sectorCount, int stackCount,
     indices.resize(0);
     textCoords.resize(0);
 
-    // get unit circle vectors on XY-plane
+    // get unit circle vectors on XZ-plane
     for (int i = 0; i <= sectorCount; ++i) {
         sectorAngle = i * sectorStep;
-        unitCircleVertices.push_back(sin(sectorAngle));                 // x
+        unitCircleVertices.push_back(sinf(sectorAngle));                 // x
         unitCircleVertices.push_back(0);                                // y
-        unitCircleVertices.push_back(cos(sectorAngle));                 // z
+        unitCircleVertices.push_back(cosf(sectorAngle));                 // z
     }
 
-    // put side vertices to arrays
-    for (int i = 0; i < 2; ++i)
-    {
-        float h = -height / 2.0f + i * height;           // z value; -h/2 to h/2
-        float t = 1.0f - i;                              // vertical tex coord; 1 to 0
 
-        for (int j = 0, k = 0; j <= sectorCount; ++j, k += 3)
-        {
-            float ux = unitCircleVertices[k];
-            float uy = unitCircleVertices[k + 1];
-            float uz = unitCircleVertices[k + 2];
-            // position vector
-            float sphereRadius = (i == 0) ? baseRadius : topRadius;
-            cylinderVertexPos.x = ux * sphereRadius;
-            cylinderVertexPos.y = h;
-            cylinderVertexPos.z = uz * sphereRadius;
-            vertices.push_back(cylinderVertexPos);
+    // vertex, normal, texture coordinate
+    for (int x = 0; x < 3; ++x) {
+        switch (x) {
+        case 0:     // top semisphere
+            for (int i = 0; i <= (stackCount / 2); ++i) {
+                stackAngle = M_PI / 2.0f - i * stackStep;
+                xy = topRadius * cosf(stackAngle);
+                capsuleVertexPos.y = topRadius * sinf(stackAngle) + (cylinderHeight / 2);
+                for (int j = 0; j <= sectorCount; ++j) {
+                    sectorAngle = j * sectorStep;
 
-            // normal vector
-            normals.push_back(glm::vec3(ux, uy, uz));
+                    // vertex position
+                    capsuleVertexPos.x = xy * sinf(sectorAngle);
+                    capsuleVertexPos.z = xy * cosf(sectorAngle);
+                    vertices.push_back(capsuleVertexPos);
 
-            // calculate texture coordinate
-            textureCoordinate.x = (float)j / sectorCount;
-            textureCoordinate.y = t;
-            textCoords.push_back(textureCoordinate);
-        }
-    }
+                    // normalized vertex normal
+                    normals.push_back(glm::normalize(capsuleVertexPos - topCenter));
 
-    int baseCenterIndex = (int)vertices.size();
-    int topCenterIndex = baseCenterIndex + sectorCount + 1; // include center vertex
-
-    // put base and top vertices to arrays
-    for (int i = 0; i < 2; ++i)
-    {
-        float h = -height / 2.0f + i * height;           // z value; -h/2 to h/2
-        float ny = -1 + i * 2;                           // z value of normal; -1 to 1
-
-        // center point
-        vertices.push_back(glm::vec3(0.0f, h, 0.0f));
-        normals.push_back(glm::vec3(0.0f, ny, 0.0f));
-        textCoords.push_back(glm::vec2(0.5f, 0.5f));
-
-        for (int j = 0, k = 0; j < sectorCount; ++j, k += 3)
-        {
-            float ux = unitCircleVertices[k];
-            float uz = unitCircleVertices[k + 2];
-            // position vector
-            float sphereRadius = (i == 0) ? baseRadius : topRadius;
-            cylinderVertexPos.x = ux * sphereRadius;
-            cylinderVertexPos.y = h;
-            cylinderVertexPos.z = uz * sphereRadius;
-            vertices.push_back(cylinderVertexPos);
-
-            // normal vector
-            normals.push_back(glm::vec3(0.0f, ny, 0.0f));
-
-            // texture coordinate
-            textureCoordinate.x = -ux * 0.5f + 0.5f;
-            textureCoordinate.y = -uz * 0.5f + 0.5f;
-            textCoords.push_back(textureCoordinate);
-
-        }
-    }
-
-    int k1 = 0;                         // 1st vertex index at base
-    int k2 = sectorCount + 1;           // 1st vertex index at top
-
-    // indices for the side surface
-    for (int i = 0; i < sectorCount; ++i, ++k1, ++k2)
-    {
-        // 2 triangles per sector
-        // k1 => k1+1 => k2
-        indices.push_back(glm::ivec3(k1, k2, k1 + 1));
-
-
-        // k2 => k1+1 => k2+1
-        indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
-    }
-
-    for (int i = 0, k = baseCenterIndex + 1; i < sectorCount; ++i, ++k)
-    {
-        if (i < sectorCount - 1)
-        {
-            indices.push_back(glm::ivec3(baseCenterIndex, k + 1, k));
-        }
-        else // last triangle
-        {
-            indices.push_back(glm::ivec3(baseCenterIndex, baseCenterIndex + 1, k));
-        }
-    }
-
-    // indices for the top surface
-    if (topRadius != 0) {
-        for (int i = 0, k = topCenterIndex + 1; i < sectorCount; ++i, ++k)
-        {
-            if (i < sectorCount - 1)
-            {
-                indices.push_back(glm::ivec3(topCenterIndex, k, k + 1));
+                    // calculate texture coordinate
+                    textureCoordinate.x = float(j) / sectorCount;
+                    textureCoordinate.y = float(i) * (topRadius / height) / stackCount;
+                    textCoords.push_back(textureCoordinate);
+                }
             }
-            else // last triangle
-            {
-                indices.push_back(glm::ivec3(topCenterIndex, k, topCenterIndex + 1));
+            break;
+        case 1:     // cylinder
+            for (int i = 1; i >= 0; --i) {
+                float h = -cylinderHeight / 2.0f + i * cylinderHeight;           // z value; h/2 to -h/2
+                float t = 1.0f - i;                              // vertical tex coord; 1 to 0
+                for (int j = 0, k = 0; j <= sectorCount; ++j, k += 3) {
+                    sectorAngle = j * sectorStep;
+
+                    float ux = unitCircleVertices[k];
+                    float uy = unitCircleVertices[k + 1];
+                    float uz = unitCircleVertices[k + 2];
+                    // position vector
+                    float capsuleRadius = (i == 0) ? baseRadius : topRadius;
+                    capsuleVertexPos.x = ux * capsuleRadius;
+                    capsuleVertexPos.y = h;
+                    capsuleVertexPos.z = uz * capsuleRadius;
+                    vertices.push_back(capsuleVertexPos);
+
+                    // normal vector
+                    normals.push_back(glm::normalize(glm::vec3(
+                        cosf(coneAngle) * sinf(sectorAngle),
+                        sinf(coneAngle),
+                        cosf(coneAngle) * cosf(sectorAngle)
+                    )));
+
+                    // calculate texture coordinate
+                    textureCoordinate.x = (float)j / sectorCount;
+                    textureCoordinate.y = (i == 1) ? (topRadius / height) : ((height - baseRadius) / height);
+                    textCoords.push_back(textureCoordinate);
+                }
+            }
+            break;
+        case 2:     // bottom semisphere
+            for (int i = (stackCount / 2); i <= stackCount; ++i) {
+                stackAngle = M_PI / 2.0f - i * stackStep;
+                xy = baseRadius * cosf(stackAngle);
+                capsuleVertexPos.y = (baseRadius * sinf(stackAngle)) - (cylinderHeight / 2);
+                for (int j = 0; j <= sectorCount; ++j) {
+                    sectorAngle = j * sectorStep;
+
+                    // vertex position
+                    capsuleVertexPos.x = xy * sinf(sectorAngle);
+                    capsuleVertexPos.z = xy * cosf(sectorAngle);
+                    vertices.push_back(capsuleVertexPos);
+
+                    // normalized vertex normal
+                    normals.push_back(glm::normalize(capsuleVertexPos - baseCenter));
+
+                    // calculate texture coordinate
+                    textureCoordinate.x = float(j) / sectorCount;
+                    textureCoordinate.y = (float(i) * ((baseRadius) / height)/ stackCount) + ((height - baseRadius) / height);
+                    textCoords.push_back(textureCoordinate);
+                }
+            }
+            break;
+        }
+    }
+
+    // indices
+        // compute triangle indices
+    int k1, k2;
+    for (int i = 0; i < (stackCount + 3); ++i) {
+        k1 = i * (sectorCount + 1);
+        k2 = k1 + sectorCount + 1;
+
+        for (int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
+            // 2 triangles per sector excluding first and last stacks
+            // k1 => k2 => k1+1
+            if (i != 0) {
+                indices.push_back(glm::ivec3(k1, k2, k1 + 1));
+            }
+            // k1+1 => k2 => k2+1
+            if (i != (stackCount + 2)) {
+                indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
             }
         }
     }
+
 }
 
 
@@ -782,7 +784,7 @@ int main(void)
     // 1: generate sphere, 0: load OFF model
 #if 1
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    int objNum = 1;
+    int objNum = 4;
     switch (objNum){
     case 0:
         sphere(1.0f, 30, 30, V, VN, T, TC);
@@ -795,6 +797,10 @@ int main(void)
         break;
     case 3:
         cone(1.0f, 30, 3.0f, V, VN, T, TC);
+        break;
+    case 4:
+        capsule(0.3f, 0.3f, 30, 30, 2.0f, V, VN, T, TC);
+        break;
 
     }
     
