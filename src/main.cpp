@@ -322,7 +322,6 @@ void torus(float outerRadius, float innerRadius, int sectorCount, int stackCount
             vertices.push_back(torusVertexPos);
 
             // normalized vertex normal
-            std::cout << torusVertexPos.x << torusVertexPos.y << torusVertexPos.z << std::endl;
             normals.push_back(glm::normalize(torusVertexPos - glm::vec3(outerRadius * sinf(sectorAngle), 0.0f, outerRadius * cosf(sectorAngle))));
 
             // calculate texture coordinate
@@ -784,7 +783,7 @@ int main(void)
     // 1: generate sphere, 0: load OFF model
 #if 1
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    int objNum = 4;
+    int objNum = 2;
     switch (objNum){
     case 0:
         sphere(1.0f, 30, 30, V, VN, T, TC);
@@ -918,7 +917,7 @@ int main(void)
         program.bind();
 
         // Set the uniform values
-        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
+        glUniform3f(program.uniform("triangleColor"), 0.79f, 0.75f, 0.9f);
         glUniform3f(program.uniform("camPos"), cameraPos.x, cameraPos.y, cameraPos.z);
         glUniformMatrix4fv(program.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
         glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
