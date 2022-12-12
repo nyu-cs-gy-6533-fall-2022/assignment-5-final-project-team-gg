@@ -800,6 +800,9 @@ int main(void)
     case 4:
         capsule(0.3f, 0.3f, 30, 30, 2.0f, V, VN, T, TC);
         break;
+    case 5:
+        truncatedCone(0.2f, 0.4f, 30, 1, V, VN, T, TC);
+        break;
 
     }
     

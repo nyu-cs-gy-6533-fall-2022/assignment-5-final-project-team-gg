@@ -7,7 +7,11 @@
 
 class Object{
 public:
-	Object(glm::vec3 col = glm::vec3(1.0, 1.0, 0.0), bool reflecting = false, bool refracting = false, float ambientFactor = 0.2f, float specExponent = 50.0f) {
+	Object(float x = 0.0f, float y = 0.0f, float z = 0.0f, glm::vec3 col = glm::vec3(1.0, 1.0, 0.0), bool reflecting = false, bool refracting = false,
+		float ambientFactor = 0.2f, float specExponent = 50.0f) {
+		this->x = x;
+		this->y = y;
+		this->z = z;
 		color = col; 
 		reflect = reflecting;
 		refract = refracting;
@@ -24,6 +28,11 @@ public:
 	float SpecularExponent() { return specularEx; };
 	bool Reflect() { return reflect; };
 
+	void setVertices(std::vector<glm::vec3> V) { this->vertices = V; };
+	void setNormals(std::vector<glm::vec3> N) { this->normals = N; };
+	void setIndices(std::vector<glm::ivec3> T) { this->indices = T; };
+	void setTexCoords(std::vector<glm::vec2> TC) { this->texCoords = TC; };
+
 private:
 	// object color
 	glm::vec3 color;
@@ -35,11 +44,58 @@ private:
 	bool refract;
 
 	// buffer
+	glm::vec3 coords;
 	std::vector<glm::vec3> vertices;
 	std::vector<glm::vec3> normals;
 	std::vector<glm::ivec3> indices;
 	std::vector<glm::vec2> texCoords;
 };
 
+
+class Torus : public Object {
+private:
+	float innerRadius;
+	float outerRadius;
+	unsigned int sector;
+	unsigned int stack;
+};
+
+
+class Sphere : public Object {
+private:
+	float radius;
+	unsigned int sector;
+	unsigned int stack;
+};
+
+class Cylinder : public Object {
+private:
+	float radius;
+	float height;
+	unsigned int sector;
+};
+
+class Capsule : public Object {
+private:
+	float radius;
+	float height;
+	unsigned int sector;
+	unsigned int stack;
+};
+
+class Cone : public Object {
+private:
+	float radius;
+	float height;
+	unsigned int sector;
+};
+
+class TruncatedCone : public Object {
+private:
+	float topRadius;
+	float baseRadius;
+	float height;
+	unsigned int sector;
+};
 
 #endif
