@@ -63,8 +63,6 @@ public:
 	std::vector<glm::ivec3> indices;
 	std::vector<glm::vec2> texCoords;
 	unsigned int maxIndex;
-
-private:
 	// object color
 	glm::vec3 color;
 	// basic material parameters
@@ -74,17 +72,18 @@ private:
 	bool reflect;
 	bool refract;
 
-	// buffer
+private:
+
 };
 
 
 class Torus : public Object {
 private:
+public:
 	float innerRadius;
 	float outerRadius;
 	unsigned int sector;
 	unsigned int stack;
-public:
 	Torus(float iR, float oR, unsigned int sec, unsigned int sta) : Object() {
 		innerRadius = iR;
 		outerRadius = oR;
@@ -96,10 +95,10 @@ public:
 
 class Sphere : public Object {
 private:
+public:
 	float radius;
 	unsigned int sector;
 	unsigned int stack;
-public:
 	Sphere(float r, unsigned int sec, unsigned int sta) : Object() {
 		radius = r;
 		sector = sec;
@@ -109,32 +108,58 @@ public:
 
 class Cylinder : public Object {
 private:
+public:
 	float radius;
 	float height;
 	unsigned int sector;
+	Cylinder(float r, unsigned int h, unsigned int sec) : Object() {
+		radius = r;
+		height = h;
+		sector = sec;
+	}
 };
 
 class Capsule : public Object {
 private:
+public:
 	float radius;
 	float height;
 	unsigned int sector;
 	unsigned int stack;
+	Capsule(float r, float h, unsigned sec, unsigned sta) : Object() {
+		radius = r;
+		height = h;
+		sector = sec;
+		stack = sta;
+	}
 };
 
 class Cone : public Object {
 private:
+public:
 	float radius;
 	float height;
 	unsigned int sector;
+	Cone(float r, float h, unsigned int sec) : Object() {
+		radius = r;
+		height = h;
+		sector = sec;
+	}
 };
 
 class TruncatedCone : public Object {
 private:
+public:
 	float topRadius;
 	float baseRadius;
 	float height;
 	unsigned int sector;
+	TruncatedCone(float topR, float baseR, float h, unsigned int sec) {
+		topRadius = topR;
+		baseRadius = baseR;
+		height = h;
+		sector = sec;
+	}
 };
 
 #endif

@@ -367,7 +367,7 @@ unsigned int torus(float outerRadius, float innerRadius, int sectorCount, int st
 
 }
 
-void truncatedCone(float topRadius, float baseRadius, int sectorCount, float height,
+unsigned int truncatedCone(float topRadius, float baseRadius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
     //
@@ -377,6 +377,7 @@ void truncatedCone(float topRadius, float baseRadius, int sectorCount, float hei
     glm::vec3 cylinderVertexPos;
     glm::vec2 textureCoordinate;
     float coneAngle = atanf((baseRadius - topRadius) / height);
+    unsigned int maxElementIndice = 0;
 
     // init variables
     vertices.resize(0);
@@ -462,8 +463,8 @@ void truncatedCone(float topRadius, float baseRadius, int sectorCount, float hei
         }
     }
 
-    int k1 = 0;                         // 1st vertex index at base
-    int k2 = sectorCount + 1;           // 1st vertex index at top
+    unsigned int k1 = 0;                         // 1st vertex index at base
+    unsigned int k2 = sectorCount + 1;           // 1st vertex index at top
 
     // indices for the side surface
     for (int i = 0; i < sectorCount; ++i, ++k1, ++k2)
@@ -475,9 +476,10 @@ void truncatedCone(float topRadius, float baseRadius, int sectorCount, float hei
 
         // k2 => k1+1 => k2+1
         indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+        maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
     }
 
-    for (int i = 0, k = baseCenterIndex + 1; i < sectorCount; ++i, ++k)
+    for (unsigned int i = 0, k = baseCenterIndex + 1; i < sectorCount; ++i, ++k)
     {
         if (i < sectorCount - 1)
         {
@@ -487,11 +489,12 @@ void truncatedCone(float topRadius, float baseRadius, int sectorCount, float hei
         {
             indices.push_back(glm::ivec3(baseCenterIndex, baseCenterIndex + 1, k));
         }
+        maxElementIndice = std::max(maxElementIndice, k);
     }
 
     // indices for the top surface
     if (topRadius != 0) {
-        for (int i = 0, k = topCenterIndex + 1; i < sectorCount; ++i, ++k)
+        for (unsigned int i = 0, k = topCenterIndex + 1; i < sectorCount; ++i, ++k)
         {
             if (i < sectorCount - 1)
             {
@@ -501,22 +504,24 @@ void truncatedCone(float topRadius, float baseRadius, int sectorCount, float hei
             {
                 indices.push_back(glm::ivec3(topCenterIndex, k, topCenterIndex + 1));
             }
+            maxElementIndice = std::max(maxElementIndice, k);
         }
     }
+    return maxElementIndice + 1;
 }
 
-void cone(float radius, int sectorCount, float height,
+unsigned int cone(float radius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
-    truncatedCone(0.0f, radius, sectorCount, height, vertices, normals, indices, textCoords);
+    return truncatedCone(0.0f, radius, sectorCount, height, vertices, normals, indices, textCoords);
 }
 
-void cylinder(float radius, int sectorCount, float height,
+unsigned int cylinder(float radius, int sectorCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
-    truncatedCone(radius, radius, sectorCount, height, vertices, normals, indices, textCoords);
+    return truncatedCone(radius, radius, sectorCount, height, vertices, normals, indices, textCoords);
 }
-void capsule(float topRadius, float baseRadius, int sectorCount, int stackCount, float height,
+unsigned int capsule(float topRadius, float baseRadius, int sectorCount, int stackCount, float height,
     std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
     std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
     //
@@ -634,7 +639,8 @@ void capsule(float topRadius, float baseRadius, int sectorCount, int stackCount,
 
     // indices
         // compute triangle indices
-    int k1, k2;
+    unsigned int k1, k2;
+    unsigned int maxElementIndice;
     for (int i = 0; i < (stackCount + 3); ++i) {
         k1 = i * (sectorCount + 1);
         k2 = k1 + sectorCount + 1;
@@ -649,9 +655,10 @@ void capsule(float topRadius, float baseRadius, int sectorCount, int stackCount,
             if (i != (stackCount + 2)) {
                 indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
             }
+            maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
         }
     }
-
+    return maxElementIndice + 1;
 }
 
 
@@ -852,8 +859,8 @@ int main(void)
     std::vector<Object*> objs;
 
     
-    Torus ta(1.0f, 0.5f, 30, 30);
-    ta.maxIndex = torus(1.0f, 0.5f, 30, 30, ta.vertices, ta.normals, ta.indices, ta.texCoords);
+    Torus ta(1.0f, 0.5f, 3, 3);
+    ta.maxIndex = torus(1.0f, 0.5f, 3, 3, ta.vertices, ta.normals, ta.indices, ta.texCoords);
     ta.offset(glm::vec3(0.0f, -2.0f, 0.0));
     objs.push_back(&ta);
 
@@ -862,12 +869,16 @@ int main(void)
     tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
     objs.push_back(&tb);
 
+
     Sphere tc(0.2f, 30, 30);
     tc.maxIndex = sphere(0.2f, 30, 30, tc.vertices, tc.normals, tc.indices, tc.texCoords);
     std::cout << tc.maxIndex << " " << tc.vertices.size() << " " << tc.indices.size();
-    //tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
+    tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
     objs.push_back(&tc);
 
+    TruncatedCone td(0.2f, 0.4f, 30, 1);
+    td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
+    objs.push_back(&td);
 
     int indicesMax = 0;
     V.resize(0); VN.resize(0); T.resize(0);
@@ -879,32 +890,31 @@ int main(void)
         indicesMax += i->maxIndex + 1;
         TC.insert(TC.end(), i->texCoords.begin(), i->texCoords.end());
     }
-    //for (glm::vec3& i : ta.vertices) { V.push_back(i); }
-    //for (glm::vec3& i : ta.normals) { VN.push_back(i); }
-    //for (glm::ivec3& i : ta.indices) { T.push_back(i); }
 
 
-    //int objNum = 6;
-    //switch (objNum){
-    //case 0:
-    //    sphere(1.0f, 30, 30, V, VN, T, TC);
-    //    break;
-    //case 1:
-    //    cylinder(1.0f, 30, 3, V, VN, T, TC);
-    //    break;
-    //case 2:
-    //    torus(1.0f, 0.5f, 30, 30, V, VN, T, TC);
-    //    break;
-    //case 3:
-    //    cone(1.0f, 30, 3.0f, V, VN, T, TC);
-    //    break;
-    //case 4:
-    //    capsule(0.3f, 0.3f, 30, 30, 2.0f, V, VN, T, TC);
-    //    break;
-    //case 5:
-    //    truncatedCone(0.2f, 0.4f, 30, 1, V, VN, T, TC);
-    //    break;
-    //}
+    int objNum = 6;
+    switch (objNum){
+    case 0:
+        sphere(1.0f, 30, 30, V, VN, T, TC);
+        break;
+    case 1:
+        cylinder(1.0f, 30, 3, V, VN, T, TC);
+        break;
+    case 2:
+        torus(1.0f, 0.5f, 30, 30, V, VN, T, TC);
+        break;
+    case 3:
+        cone(1.0f, 30, 3.0f, V, VN, T, TC);
+        break;
+    case 4:
+        capsule(0.3f, 0.3f, 30, 30, 2.0f, V, VN, T, TC);
+        break;
+    case 5:
+        truncatedCone(0.2f, 0.4f, 30, 1, V, VN, T, TC);
+        break;
+    default:
+        break;
+    }
     
     VBO.update(V);
     NBO.update(VN);
