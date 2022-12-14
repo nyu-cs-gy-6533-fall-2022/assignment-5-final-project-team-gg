@@ -830,6 +830,8 @@ void TBOlight_prepare(std::vector<float>& tbo, int id,
     std::vector<glm::vec3>& vertex,
     glm::vec3 direction,
     float Ia, float Ii) {
+
+    std::cout << Ia << Ii << std::endl;
     tbo.push_back((float)id);
     tbo.push_back(Ia);
     tbo.push_back(Ii);
@@ -970,24 +972,27 @@ int main(void)
     // td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
     // objs.push_back(&td);
 
-    Plane te(glm::vec3(-1.0f, 0.0f, -3.0f), glm::vec3(1.0f, 0.0f, -3.0f));
+    Plane te(glm::vec3(-3.0f, 0.0f, -3.0f), glm::vec3(3.0f, 0.0f, -3.0f));
+    //te.offset(glm::vec3( - 1.0f, 0.0f, 0.0f));
     te.reflect = false;
-    objs.push_back(&te);
+    objs.push_back(&te);    
+
 
     int indicesMax = 0;
     V.resize(0); VN.resize(0); T.resize(0);
     for (Object* i : objs) {
+        int vsize = V.size();
         V.insert(V.end(), i->vertices.begin(), i->vertices.end());
         VN.insert(VN.end(), i->normals.begin(), i->normals.end());
-        i->adjustIndice(indicesMax);
+        i->adjustIndice(vsize);
         T.insert(T.end(), i->indices.begin(), i->indices.end());
-        indicesMax += i->maxIndex + 1;
+        indicesMax += vsize;
         TC.insert(TC.end(), i->texCoords.begin(), i->texCoords.end());
         TBO_prepare(tbo, V, VN, i->indices, i->color, i->reflect, i->light);
     }
 
     ///////////////////////////////////////////light///////////////////////////////////////////////
-    PointLight pa(glm::vec3(-1.0f, 2.0f, 3.0f));
+    PointLight pa(glm::vec3(-1.0f, 2.0f, -3.0f));
     ligs.push_back(&pa);
     PointLight pb(glm::vec3(1.0f, 2.0f, 3.0f));
     ligs.push_back(&pb);
@@ -1148,10 +1153,10 @@ int main(void)
 
 
     glGenTextures(1, &TBO_tex2);
-    glBindBuffer(GL_TEXTURE_BUFFER, 0);
+    glBindBuffer(GL_TEXTURE_BUFFER, 1);
 
 
-    glUniform1i(glGetUniformLocation(program.program_shader, "tria2"), 0);
+    glUniform1i(glGetUniformLocation(program.program_shader, "tria2"), 1);
     glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size2"), ligs.size());
 
 
@@ -1188,6 +1193,10 @@ int main(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_BUFFER, TBO_tex);
         glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_BUFFER, TBO_tex2);
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO2);
 
         // bind your element array
         IndexBuffer.bind();

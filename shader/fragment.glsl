@@ -66,13 +66,13 @@ Triangle get_triangle(int i){
 
 struct Light{
     float id;
+    float Ia;
+    float Ii;
     vec3 p1;
     vec3 p2;
     vec3 p3;
     vec3 p4;
     vec3 dir;
-    float Ia;
-    float Ii;
 };
 
 Light get_light(int i){
@@ -155,6 +155,9 @@ vec3 Phong(vec3 color, vec3 normal, vec3 light_pos, vec3 pos, vec3 cam_pos, vec3
 vec3 Phong1(vec3 color, vec3 normal, vec3 pos, vec3 cam_pos){
     normal = normalize(normal);
     vec3 light_dir;
+    vec3 cam_dir = normalize(cam_pos - pos);
+    vec3 ref;
+    vec3 ambientColor;
     vec3 totalDiffuse = vec3(0.0, 0.0, 0.0);
     vec3 totalSpecular = vec3(0.0, 0.0, 0.0);
     float nl;
@@ -166,20 +169,17 @@ vec3 Phong1(vec3 color, vec3 normal, vec3 pos, vec3 cam_pos){
                 break;
             case 1: // point
                 light_dir = normalize(l.p1 - pos);
+                ref = normalize(reflect(-light_dir, normal));
                 nl = clamp(dot(light_dir, normal), 0.0f, 1.0f);
-                totalDiffuse += (l.Ii * color * nl);
-                total
+                ambientColor = (l.Ia * color);
+                totalDiffuse += (l.Ii * nl);
+                totalSpecular += (l.Ii * vec3(1.0) * pow( max(0.0, dot( cam_dir, ref)), 50.0) );
                 break;
 
         }
     
-    
     }
-    vec3 light_dir = normalize(light_pos - pos);
-    return clamp( color * light_para.x + 
-            color * max(0.0, dot(normal, light_dir)) + 
-            vec3(1.0) * pow(max(0.0, dot( normalize(cam_pos - pos), normalize( reflect(-light_dir, normal)))), light_para.y),
-            0.0, 1.0);
+    return clamp(ambientColor + totalDiffuse * color + totalSpecular, 0.0, 1.0);
 }
 
 
@@ -198,7 +198,35 @@ bool shadow(Intersection inter){
     return false;
 }
 
+int shadow2(Intersection inter){
+    int count = 0;
+    vec3 position = inter.position;
+    int id = inter.triangle_id;
+
+    Intersection temp_inter;
+    Ray ray;
+    for(int j = 0; j < tbo_size; ++j){
+        Triangle triangle = get_triangle(j);
+        for(int i = 0; i < tbo_size2; ++i){
+            Light l = get_light(i);
+            switch(int(l.id)){
+                case 0:
+                    break;
+                case 1:
+                    ray = Ray(position, normalize(l.p1 - position));
+                    temp_inter = intersect(ray, triangle);
+                    if(temp_inter.is_intersecting && id != triangle.id)
+                        count++;
+                    break;
+            }
+        }
+
+    }
+    return count;
+}
+
 vec3 ray_tracing(){
+    Light l = get_light(0);
     int depth = 10;
     vec3 result;
     vec3 pos_temp = camPos;
@@ -240,11 +268,13 @@ vec3 ray_tracing(){
     }
     result = inter_buffer[current_depth].color;
     for(int k = current_depth; k >=0; --k){
-        if(shadow(inter_buffer[k])){
-            result = clamp(result * lightParams.x, 0.0, 1.0);
+        int divider = shadow2(inter_buffer[k]);
+        if(divider > 0){
+            result = clamp(result * lightParams.x / divider, 0.0, 1.0);
         }
         else{
-            result =  Phong(result, inter_buffer[k].normal, lightPos, inter_buffer[k].position, camPos, lightParams);
+            result = Phong1(result, inter_buffer[k].normal, inter_buffer[k].position, camPos);
+            //result =  Phong(result, inter_buffer[k].normal, l.p1, inter_buffer[k].position, camPos, lightParams);
         }
     }
     return result;
@@ -253,6 +283,7 @@ vec3 ray_tracing(){
 void main()
 {
     vec3 col = ray_tracing();
-    Light l = get_light(0);
+//    Light l = get_light(0);
+//    vec3 col = vec3(l.Ia, 0.0, 0.0);
     outColor = vec4(col, 1.0);
 }
