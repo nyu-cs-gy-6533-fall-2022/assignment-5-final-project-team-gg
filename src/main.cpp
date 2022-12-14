@@ -45,6 +45,8 @@ std::vector<glm::vec3> VN;
 std::vector<glm::ivec3> T;
 //
 std::vector<glm::vec2> TC;
+// data for tbo
+std::vector<float> tbo;
 
 // Last position of the mouse on click
 double xpos, ypos;
@@ -784,7 +786,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
 void TBO_prepare(std::vector<float>& tbo, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
-                    std::vector<glm::ivec3>& tria, glm::vec3 col){
+                    std::vector<glm::ivec3>& tria, glm::vec3 col, bool is_reflecing, bool is_light){
     std::cout<<tria.size()<<std::endl;
     for(int i = 0; i < tria.size(); ++i){
         // positions
@@ -812,12 +814,11 @@ void TBO_prepare(std::vector<float>& tbo, std::vector<glm::vec3>& vertex, std::v
         tbo.push_back(col.y);
         tbo.push_back(col.z);
         // is_reflecing
-        if(i >= tria.size() - 2){
-            tbo.push_back(3);
-        }else
-            tbo.push_back(0);
+        if(is_reflecing) tbo.push_back(5);
+        else tbo.push_back(0);
         // is_light
-        tbo.push_back(0);
+        if(is_light) tbo.push_back(5);
+        else tbo.push_back(0);
         tbo.push_back(0);
         
     }
@@ -921,10 +922,10 @@ int main(void)
     std::vector<Object*> objs;
 
     
-    Torus ta(1.0f, 0.5f, 5, 5);
-    ta.maxIndex = torus(1.0f, 0.5f, 5, 5, ta.vertices, ta.normals, ta.indices, ta.texCoords);
-    ta.offset(glm::vec3(0.0f, -2.0f, 0.0));
-    objs.push_back(&ta);
+    // Torus ta(1.0f, 0.5f, 5, 5);
+    // ta.maxIndex = torus(1.0f, 0.5f, 5, 5, ta.vertices, ta.normals, ta.indices, ta.texCoords);
+    // ta.offset(glm::vec3(0.0f, -2.0f, 0.0));
+    // objs.push_back(&ta);
 
     Torus tb(0.5f, 0.2f, 30, 30);
     tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
@@ -932,17 +933,18 @@ int main(void)
     objs.push_back(&tb);
 
 
-    Sphere tc(0.2f, 30, 30);
-    tc.maxIndex = sphere(0.2f, 30, 30, tc.vertices, tc.normals, tc.indices, tc.texCoords);
-    std::cout << tc.maxIndex << " " << tc.vertices.size() << " " << tc.indices.size();
-    tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
-    objs.push_back(&tc);
+    // Sphere tc(0.2f, 30, 30);
+    // tc.maxIndex = sphere(0.2f, 30, 30, tc.vertices, tc.normals, tc.indices, tc.texCoords);
+    // std::cout << tc.maxIndex << " " << tc.vertices.size() << " " << tc.indices.size();
+    // tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
+    // objs.push_back(&tc);
 
-    TruncatedCone td(0.2f, 0.4f, 30, 1);
-    td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
-    objs.push_back(&td);
+    // TruncatedCone td(0.2f, 0.4f, 30, 1);
+    // td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
+    // objs.push_back(&td);
 
-    Plane te(glm::vec3(-1.0f, 0.0f, -1.0f), glm::vec3(1.0f, 0.0f, -1.0f));
+    Plane te(glm::vec3(-1.0f, 0.0f, -3.0f), glm::vec3(1.0f, 0.0f, -3.0f));
+    te.reflect = true;
     objs.push_back(&te);
 
     int indicesMax = 0;
@@ -954,6 +956,7 @@ int main(void)
         T.insert(T.end(), i->indices.begin(), i->indices.end());
         indicesMax += i->maxIndex + 1;
         TC.insert(TC.end(), i->texCoords.begin(), i->texCoords.end());
+        TBO_prepare(tbo, V, VN, i->indices, i->color, i->reflect, i->light);
     }
 
 
@@ -1079,40 +1082,15 @@ int main(void)
     // TBO
     // tbo: pos1, pos2, pos3, nor1, nor2, nor3, col, (is_reflecting, is_lighting, 0);
     // for test
-     float a[] = {
-        -1,-1,2,
-        1,-1,2,
-        0,1,2,
-        0,0,-1,
-        0,0,-1,
-        0,0,-1,
-        0,1,0,
-        0,0,0,
-        -1,-1,-2,
-        1,-1,-2,
-        0,1,-2,
-        0,0,1,
-        0,0,1,
-        0,0,1,
-        1,0,0,
-        0,0,0
-    };
     unsigned int TBO_tex;
     GLuint TBO;
     glGenBuffers(1, &TBO);
     glBindBuffer(GL_TEXTURE_BUFFER, TBO);
-    std::vector<float> temp;
-    temp.clear();
-    TBO_test(V, VN, T);
-    VBO.update(V);
-    NBO.update(VN);
-    IndexBuffer.update(T);
-    TBO_prepare(temp, V, VN, T, glm::vec3(1,1,0));
-
-
-    glBufferData(GL_TEXTURE_BUFFER, temp.size()*sizeof(float), &temp[0], GL_STATIC_DRAW);
     
-    //glBufferData(GL_TEXTURE_BUFFER, sizeof(a), a, GL_STATIC_DRAW);
+    //TBO_prepare(tbo, V, VN, T, glm::vec3(1,1,0));
+
+
+    glBufferData(GL_TEXTURE_BUFFER, tbo.size()*sizeof(float), &tbo[0], GL_STATIC_DRAW);
     
 
     glGenTextures(1, &TBO_tex);
@@ -1122,7 +1100,7 @@ int main(void)
     glUniform1i(glGetUniformLocation(program.program_shader, "tria"), 0);
     glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size"), T.size());
     //
-    std::cout<<temp.size()<<std::endl;
+    std::cout<<tbo.size()<<std::endl;
 
     program.bindVertexAttribArray("position", VBO);
     program.bindVertexAttribArray("normal", NBO);

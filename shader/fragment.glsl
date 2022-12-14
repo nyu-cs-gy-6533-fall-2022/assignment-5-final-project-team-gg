@@ -61,6 +61,7 @@ Triangle get_triangle(int i){
     return triangle;
 }
 
+// ray triangle intersection
 Intersection intersect(Ray ray, Triangle triangle){
     Intersection inter;
     // initialize a non-intersection
@@ -79,27 +80,27 @@ Intersection intersect(Ray ray, Triangle triangle){
     if(t < 0)
         return inter;
 
-    vec3 p = ray.ray_origin + ray.ray_dir * t;
+    vec3 intersection_point = ray.ray_origin + ray.ray_dir * t;
     vec3 v0 = triangle.v3 - triangle.v1;
     vec3 v1 = triangle.v2 - triangle.v1;
-    vec3 v2 = p - triangle.v1;
+    vec3 v2 = intersection_point - triangle.v1;
 
-    float dot00 = dot(v0, v0);
-    float dot01 = dot(v0, v1);
-    float dot02 = dot(v0, v2);
-    float dot11 = dot(v1, v1);
-    float dot12 = dot(v1, v2);
+    float dot_00 = dot(v0, v0);
+    float dot_01 = dot(v0, v1);
+    float dot_02 = dot(v0, v2);
+    float dot_11 = dot(v1, v1);
+    float dot_12 = dot(v1, v2);
 
-    float invDenom = 1.0 / (dot00 * dot11 - dot01 * dot01);
-    float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-    float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+    float inverse_denom = 1.0 / (dot_00 * dot_11 - dot_01 * dot_01);
+    float u = (dot_11 * dot_02 - dot_01 * dot_12) * inverse_denom;
+    float v = (dot_00 * dot_12 - dot_01 * dot_02) * inverse_denom;
 
     if ((u >= 0) && (v >= 0) && (u + v < 1)){
         if(perpen>0)   
             inter.normal = -n;
         else
             inter.normal = n;
-        inter.position = p;
+        inter.position = intersection_point;
         inter.color = triangle.color;
         inter.is_intersecting = true;
         inter.is_reflecting = triangle.is_reflecting;
@@ -137,9 +138,6 @@ bool shadow(Intersection inter){
     return false;
 }
 
-
-
-
 vec3 ray_tracing(){
     int depth = 10;
     vec3 result;
@@ -159,6 +157,10 @@ vec3 ray_tracing(){
                 min_distance = temp_inter.d;
                 inter = temp_inter;
             }
+        }
+        if(!inter.is_intersecting){
+            inter.color = vec3(1,0,0);
+            break;
         }
         inter_buffer[i] = inter;
         if(!inter.is_reflecting){
