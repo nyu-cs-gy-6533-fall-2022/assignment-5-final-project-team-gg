@@ -976,8 +976,8 @@ int main(void)
     td.color = glm::vec3(0.0, 1.0, 0.0);
     objs.push_back(&td);
 
-    Cone tf(0.2f, 2.0f, 30);
-    tf.maxIndex = cone(0.3f, 30, 0.5f, tf.vertices, tf.normals, tf.indices, tf.texCoords);
+    Capsule tf(0.2, 0.8, 20, 20);
+    tf.maxIndex = capsule(0.2, 0.2, 20, 20, 0.8, tf.vertices, tf.normals, tf.indices, tf.texCoords);
     tf.offset(glm::vec3(-1.0, 1.0, 0.0));
     tf.color = glm::vec3(1.0, 0.5, 0.0);
     objs.push_back(&tf);
