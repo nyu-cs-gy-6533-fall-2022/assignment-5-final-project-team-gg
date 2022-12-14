@@ -831,6 +831,8 @@ void TBOlight_prepare(std::vector<float>& tbo, int id,
     glm::vec3 direction,
     float Ia, float Ii) {
     tbo.push_back((float)id);
+    tbo.push_back(Ia);
+    tbo.push_back(Ii);
     for (int i = 0; i < 4; ++i) {
         // positions
         tbo.push_back(vertex[i].x);
@@ -842,8 +844,6 @@ void TBOlight_prepare(std::vector<float>& tbo, int id,
     tbo.push_back(direction.y);
     tbo.push_back(direction.z);
 
-    tbo.push_back(Ia);
-    tbo.push_back(Ii);
 
 
 }

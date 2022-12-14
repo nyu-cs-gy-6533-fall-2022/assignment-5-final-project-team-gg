@@ -63,6 +63,33 @@ Triangle get_triangle(int i){
     return triangle;
 }
 
+
+struct Light{
+    float id;
+    vec3 p1;
+    vec3 p2;
+    vec3 p3;
+    vec3 p4;
+    vec3 dir;
+    float Ia;
+    float Ii;
+};
+
+Light get_light(int i){
+// [id Ia Ii] [p1] [p2] [p3] [p4] [dir]
+    Light light;
+    light.id = texelFetch(tria2, 6 * i).r;
+    light.Ia = texelFetch(tria2, 6 * i).g;
+    light.Ii = texelFetch(tria2, 6 * i).b;
+    light.p1 = texelFetch(tria2, 6 * i + 1).rgb;
+    light.p2 = texelFetch(tria2, 6 * i + 2).rgb;
+    light.p3 = texelFetch(tria2, 6 * i + 3).rgb;
+    light.p4 = texelFetch(tria2, 6 * i + 4).rgb;
+    light.dir = texelFetch(tria2, 6 * i + 5).rgb;
+    return light;
+}
+
+
 // ray triangle intersection
 Intersection intersect(Ray ray, Triangle triangle){
     Intersection inter;
@@ -124,6 +151,37 @@ vec3 Phong(vec3 color, vec3 normal, vec3 light_pos, vec3 pos, vec3 cam_pos, vec3
             vec3(1.0) * pow(max(0.0, dot( normalize(cam_pos - pos), normalize( reflect(-light_dir, normal)))), light_para.y),
             0.0, 1.0);
 }
+
+vec3 Phong1(vec3 color, vec3 normal, vec3 pos, vec3 cam_pos){
+    normal = normalize(normal);
+    vec3 light_dir;
+    vec3 totalDiffuse = vec3(0.0, 0.0, 0.0);
+    vec3 totalSpecular = vec3(0.0, 0.0, 0.0);
+    float nl;
+    
+    for (int i = 0; i < tbo_size2; i++){
+        Light l = get_light(i);
+        switch(int(l.id)){
+            case 0: // direction
+                break;
+            case 1: // point
+                light_dir = normalize(l.p1 - pos);
+                nl = clamp(dot(light_dir, normal), 0.0f, 1.0f);
+                totalDiffuse += (l.Ii * color * nl);
+                total
+                break;
+
+        }
+    
+    
+    }
+    vec3 light_dir = normalize(light_pos - pos);
+    return clamp( color * light_para.x + 
+            color * max(0.0, dot(normal, light_dir)) + 
+            vec3(1.0) * pow(max(0.0, dot( normalize(cam_pos - pos), normalize( reflect(-light_dir, normal)))), light_para.y),
+            0.0, 1.0);
+}
+
 
 bool shadow(Intersection inter){
     vec3 position = inter.position;
@@ -195,5 +253,6 @@ vec3 ray_tracing(){
 void main()
 {
     vec3 col = ray_tracing();
+    Light l = get_light(0);
     outColor = vec4(col, 1.0);
 }
