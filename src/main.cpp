@@ -43,6 +43,8 @@ std::vector<glm::vec3> V;
 std::vector<glm::vec3> VN;
 // Contains the vertex index
 std::vector<glm::ivec3> T;
+//
+std::vector<glm::ivec3> TC;
 
 // Last position of the mouse on click
 double xpos, ypos;
