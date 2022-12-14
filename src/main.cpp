@@ -37,11 +37,11 @@ BufferObject NBO;
 BufferObject IndexBuffer;
 
 // Contains the vertex positions
-std::vector<glm::vec3> V(3);
-// Contains the vertex positions
-std::vector<glm::vec3> VN(3);
-// Contains the vertex positions
-std::vector<glm::ivec3> T(3);
+std::vector<glm::vec3> V;
+// Contains the vertex normal
+std::vector<glm::vec3> VN;
+// Contains the vertex index
+std::vector<glm::ivec3> T;
 
 // Last position of the mouse on click
 double xpos, ypos;
@@ -228,7 +228,7 @@ bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vect
     return true;
 }
 
-void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, std::vector<glm::ivec3>& tria) {
+void sphere(glm::vec3 origin, float sphereRadius, int sectorCount, int stackCount, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, std::vector<glm::ivec3>& tria) {
     // init variables
     vertex.resize(0);
     normal.resize(0);
@@ -252,10 +252,10 @@ void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm
             // vertex position
             sphereVertexPos.x = xy * cosf(sectorAngle);
             sphereVertexPos.y = xy * sinf(sectorAngle);
-            vertex.push_back(sphereVertexPos); 
+            vertex.push_back(origin + sphereVertexPos); 
 
             // normalized vertex normal
-            normal.push_back(sphereVertexPos / sphereRadius);
+            normal.push_back((sphereVertexPos - origin) / sphereRadius);
         }
     }
 
@@ -353,12 +353,74 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 }
 
+void TBO_prepare(std::vector<float>& tbo, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
+                    std::vector<glm::ivec3>& tria, glm::vec3 col){
+    std::cout<<tria.size()<<std::endl;
+    for(int i = 0; i < tria.size(); ++i){
+        // positions
+        tbo.push_back(vertex[tria[i].x].x);
+        tbo.push_back(vertex[tria[i].x].y);
+        tbo.push_back(vertex[tria[i].x].z);
+        tbo.push_back(vertex[tria[i].y].x);
+        tbo.push_back(vertex[tria[i].y].y);
+        tbo.push_back(vertex[tria[i].y].z);
+        tbo.push_back(vertex[tria[i].z].x);
+        tbo.push_back(vertex[tria[i].z].y);
+        tbo.push_back(vertex[tria[i].z].z);
+        // normal
+        tbo.push_back(normal[tria[i].x].x);
+        tbo.push_back(normal[tria[i].x].y);
+        tbo.push_back(normal[tria[i].x].z);
+        tbo.push_back(normal[tria[i].y].x);
+        tbo.push_back(normal[tria[i].y].y);
+        tbo.push_back(normal[tria[i].y].z);
+        tbo.push_back(normal[tria[i].z].x);
+        tbo.push_back(normal[tria[i].z].y);
+        tbo.push_back(normal[tria[i].z].z);
+        // color
+        tbo.push_back(col.x);
+        tbo.push_back(col.y);
+        tbo.push_back(col.z);
+        // is_reflecing
+        if(i >= tria.size() - 2){
+            tbo.push_back(3);
+        }else
+            tbo.push_back(0);
+        // is_light
+        tbo.push_back(0);
+        tbo.push_back(0);
+        
+    }
+}
+
+
+void TBO_test(std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
+                    std::vector<glm::ivec3>& tria){
+    vertex.push_back(glm::vec3(-10, -10, -3));
+    vertex.push_back(glm::vec3(-10, 10, -3));
+    vertex.push_back(glm::vec3(10, -10, -3));
+    normal.push_back(glm::vec3(0, 0, 1));
+    normal.push_back(glm::vec3(0, 0, 1));    
+    normal.push_back(glm::vec3(0, 0, 1));
+    tria.push_back(glm::vec3(vertex.size()-3,vertex.size()-2,vertex.size()-1));
+    //
+    vertex.push_back(glm::vec3(10, -10, -3));
+    vertex.push_back(glm::vec3(-10, 10, -3));
+    vertex.push_back(glm::vec3(10, 10, -3));
+    normal.push_back(glm::vec3(0, 0, 1));
+    normal.push_back(glm::vec3(0, 0, 1));    
+    normal.push_back(glm::vec3(0, 0, 1));
+    tria.push_back(glm::vec3(vertex.size()-3,vertex.size()-2,vertex.size()-1));
+    //
+}
+
+
 int main(void)
 {
     GLFWwindow* window;
 
     // Initialize the library
-    if (!glfwInit())
+    if (!glfwInit())   
         return -1;
 
     // Activate supersampling
@@ -426,7 +488,7 @@ int main(void)
     // 1: generate sphere, 0: load OFF model
 #if 1
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    sphere(1.0f, 30, 30, V, VN, T);
+    sphere(glm::vec3(-.0,0,0), .5f, 20, 20, V, VN, T);
     VBO.update(V);
     NBO.update(VN);
     IndexBuffer.update(T);
@@ -501,8 +563,7 @@ int main(void)
     // The vertex shader wants the position of the vertices as an input.
     // The following line connects the VBO we defined above with the position "slot"
     // in the vertex shader
-    program.bindVertexAttribArray("position", VBO);
-    program.bindVertexAttribArray("normal", NBO);
+    
 
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
@@ -520,6 +581,57 @@ int main(void)
     cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
     cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
 
+    // TBO
+    // tbo: pos1, pos2, pos3, nor1, nor2, nor3, col, (is_reflecting, is_lighting, 0);
+    // for test
+     float a[] = {
+        -1,-1,2,
+        1,-1,2,
+        0,1,2,
+        0,0,-1,
+        0,0,-1,
+        0,0,-1,
+        0,1,0,
+        0,0,0,
+        -1,-1,-2,
+        1,-1,-2,
+        0,1,-2,
+        0,0,1,
+        0,0,1,
+        0,0,1,
+        1,0,0,
+        0,0,0
+    };
+    unsigned int TBO_tex;
+    GLuint TBO;
+    glGenBuffers(1, &TBO);
+    glBindBuffer(GL_TEXTURE_BUFFER, TBO);
+    std::vector<float> temp;
+    temp.clear();
+    TBO_test(V, VN, T);
+    VBO.update(V);
+    NBO.update(VN);
+    IndexBuffer.update(T);
+    TBO_prepare(temp, V, VN, T, glm::vec3(1,1,0));
+
+
+    glBufferData(GL_TEXTURE_BUFFER, temp.size()*sizeof(float), &temp[0], GL_STATIC_DRAW);
+    
+    //glBufferData(GL_TEXTURE_BUFFER, sizeof(a), a, GL_STATIC_DRAW);
+    
+
+    glGenTextures(1, &TBO_tex);
+    glBindBuffer(GL_TEXTURE_BUFFER, 0);
+
+
+    glUniform1i(glGetUniformLocation(program.program_shader, "tria"), 0);
+    glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size"), T.size());
+    //
+    std::cout<<temp.size()<<std::endl;
+
+    program.bindVertexAttribArray("position", VBO);
+    program.bindVertexAttribArray("normal", NBO);
+
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
     {
@@ -533,6 +645,9 @@ int main(void)
 
         // Bind your VAO (not necessary if you have only one)
         VAO.bind();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_BUFFER, TBO_tex);
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO);
 
         // bind your element array
         IndexBuffer.bind();
