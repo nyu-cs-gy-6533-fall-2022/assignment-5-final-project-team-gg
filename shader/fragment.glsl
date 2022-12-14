@@ -191,8 +191,8 @@ bool shadow(Intersection inter){
         // generate the triangle
         Triangle triangle = get_triangle(j);
         Intersection temp_inter = intersect(ray, triangle);
-        //if(temp_inter.is_intersecting && temp_inter.d > 0 && temp_inter.d < length(light_pos - position) && id != triangle.id)
-        if(temp_inter.is_intersecting && id != triangle.id)
+        if(temp_inter.is_intersecting && temp_inter.d > 0 && temp_inter.d < length(lightPos - position) && id != triangle.id)
+        //if(temp_inter.is_intersecting && id != triangle.id)
             return true;
     }
     return false;
@@ -215,7 +215,8 @@ int shadow2(Intersection inter){
                 case 1:
                     ray = Ray(position, normalize(l.p1 - position));
                     temp_inter = intersect(ray, triangle);
-                    if(temp_inter.is_intersecting && id != triangle.id)
+                    if(temp_inter.is_intersecting && id != triangle.id && temp_inter.d > 0 
+                        && temp_inter.d < length(l.p1 - position))
                         count++;
                     break;
             }
