@@ -1,7 +1,8 @@
 // This example is heavily based on the tutorial at https://open.gl
-
+#include <algorithm>
 // OpenGL Helpers to reduce the clutter
 #include "Helpers.h"
+#include "object.h"
 
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
@@ -56,6 +57,13 @@ glm::mat4 viewMatrix;
 glm::mat4 projMatrix;
 
 float camRadius = 5.0f;
+bool firstMouse = true;
+float yaw = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
+float pitch = 0.0f;
+float lastX = 800.0f / 2.0;
+float lastY = 600.0 / 2.0;
+//0: static, 1: cursor
+bool mode = 0;
 
 // PPM Reader code from http://josiahmanson.com/prose/optimize_ppm/
 
@@ -153,7 +161,7 @@ bool loadPPM(ImageRGB& img, const std::string& name) {
     return true;
 }
 
-bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vector<glm::ivec3>& tria, glm::vec3& min, glm::vec3& max)
+bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vector<glm::ivec3>& indices, glm::vec3& min, glm::vec3& max)
 {
     min.x = FLT_MAX;
     max.x = FLT_MIN;
@@ -228,13 +236,17 @@ bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vect
     return true;
 }
 
-void sphere(glm::vec3 origin, float sphereRadius, int sectorCount, int stackCount, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, std::vector<glm::ivec3>& tria) {
+unsigned int sphere(float sphereRadius, int sectorCount, int stackCount,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
     // init variables
-    vertex.resize(0);
-    normal.resize(0);
-    tria.resize(0);
+    vertices.resize(0);
+    normals.resize(0);
+    indices.resize(0);
+    textCoords.resize(0);
     // temp variables
     glm::vec3 sphereVertexPos;
+    glm::vec2 textureCoordinate;
     float xy;
     float sectorStep = 2.0f * M_PI / float(sectorCount);
     float stackStep = M_PI / stackCount;
@@ -250,17 +262,23 @@ void sphere(glm::vec3 origin, float sphereRadius, int sectorCount, int stackCoun
             sectorAngle = j * sectorStep;
 
             // vertex position
-            sphereVertexPos.x = xy * cosf(sectorAngle);
-            sphereVertexPos.y = xy * sinf(sectorAngle);
-            vertex.push_back(origin + sphereVertexPos); 
+            sphereVertexPos.x = xy * sinf(sectorAngle);
+            sphereVertexPos.y = xy * cosf(sectorAngle);
+            vertices.push_back(sphereVertexPos);
 
             // normalized vertex normal
-            normal.push_back((sphereVertexPos - origin) / sphereRadius);
+            normals.push_back(sphereVertexPos / sphereRadius);
+
+            // calculate texture coordinate
+            textureCoordinate.x = float(j) / sectorCount;
+            textureCoordinate.y = float(i) / stackCount;
+            textCoords.push_back(textureCoordinate);
         }
     }
 
     // compute triangle indices
-    int k1, k2;
+    unsigned int k1, k2;
+    unsigned int maxElementIndice = 0;
     for (int i = 0; i < stackCount; ++i) {
         k1 = i * (sectorCount + 1);
         k2 = k1 + sectorCount + 1;
@@ -269,16 +287,378 @@ void sphere(glm::vec3 origin, float sphereRadius, int sectorCount, int stackCoun
             // 2 triangles per sector excluding first and last stacks
             // k1 => k2 => k1+1
             if (i != 0) {
-                T.push_back(glm::ivec3(k1, k2, k1 + 1));
+                indices.push_back(glm::ivec3(k1, k2, k1 + 1));
             }
             // k1+1 => k2 => k2+1
             if (i != (stackCount - 1)) {
-                T.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+                indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
             }
+            maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
+        }
+    }
+    return maxElementIndice + 1;
+
+}
+
+
+unsigned int torus(float outerRadius, float innerRadius, int sectorCount, int stackCount,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+    // init variables
+    vertices.resize(0);
+    normals.resize(0);
+    indices.resize(0);
+    textCoords.resize(0);
+    // temp variables
+    glm::vec3 torusVertexPos;
+    glm::vec2 textureCoordinate;
+
+    float sectorStep = 2.0f * M_PI / float(sectorCount);
+    float stackStep = 2.0f * M_PI / float(stackCount);
+    float sectorAngle, stackAngle;
+
+    // compute vertices and normals
+    for (int i = 0; i <= stackCount; ++i) {
+        stackAngle = M_PI / 2.0f - i * stackStep;
+        torusVertexPos.y = innerRadius * sinf(stackAngle);
+
+        for (int j = 0; j <= sectorCount; ++j) {
+            sectorAngle = j * sectorStep;
+
+            // vertex position
+            torusVertexPos.x = sinf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
+            torusVertexPos.z = cosf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
+            vertices.push_back(torusVertexPos);
+
+            // normalized vertex normal
+            normals.push_back(glm::normalize(torusVertexPos - glm::vec3(outerRadius * sinf(sectorAngle), 0.0f, outerRadius * cosf(sectorAngle))));
+
+            // calculate texture coordinate
+            textureCoordinate.x = float(j) / sectorCount;
+            textureCoordinate.y = float(i) / stackCount;
+            textCoords.push_back(textureCoordinate);
         }
     }
 
+    // compute triangle indices
+    unsigned int k1, k2;
+    unsigned int maxElementIndice = 0;
+    for (int i = 0; i < stackCount; ++i) {
+        k1 = i * (sectorCount + 1);
+        k2 = k1 + sectorCount + 1;
+
+        for (int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
+            // 2 triangles per sector excluding first and last stacks
+            // k1 => k2 => k1+1
+
+            indices.push_back(glm::ivec3(k1, k2, k1 + 1));
+
+            // k1+1 => k2 => k2+1
+
+            indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+
+            maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
+
+        }
+    }
+    return maxElementIndice + 1;
+
 }
+
+unsigned int truncatedCone(float topRadius, float baseRadius, int sectorCount, float height,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+    //
+    float sectorStep = 2.0f * M_PI / float(sectorCount);
+    float sectorAngle;
+    std::vector<float> unitCircleVertices;
+    glm::vec3 cylinderVertexPos;
+    glm::vec2 textureCoordinate;
+    float coneAngle = atanf((baseRadius - topRadius) / height);
+    unsigned int maxElementIndice = 0;
+
+    // init variables
+    vertices.resize(0);
+    normals.resize(0);
+    indices.resize(0);
+    textCoords.resize(0);
+
+    // get unit circle vectors on XY-plane
+    for (int i = 0; i <= sectorCount; ++i){
+        sectorAngle = i * sectorStep;
+        unitCircleVertices.push_back(sin(sectorAngle)); // x
+        unitCircleVertices.push_back(0); // y
+        unitCircleVertices.push_back(cos(sectorAngle));                // z
+    }
+
+    // put side vertices to arrays
+    for (int i = 0; i < 2; ++i)
+    {
+        float h = -height / 2.0f + i * height;           // z value; -h/2 to h/2
+        float t = 1.0f - i;                              // vertical tex coord; 1 to 0
+
+        for (int j = 0, k = 0; j <= sectorCount; ++j, k += 3)
+        {
+            sectorAngle = j * sectorStep;
+
+            float ux = unitCircleVertices[k];
+            float uy = unitCircleVertices[k + 1];
+            float uz = unitCircleVertices[k + 2];
+            // position vector
+            float sphereRadius = (i == 0) ? baseRadius : topRadius;
+            cylinderVertexPos.x = ux * sphereRadius;
+            cylinderVertexPos.y = h;
+            cylinderVertexPos.z = uz * sphereRadius;
+            vertices.push_back(cylinderVertexPos);
+
+            // normal vector
+            normals.push_back(glm::normalize(glm::vec3(
+                cosf(coneAngle) * sinf(sectorAngle),
+                sinf(coneAngle),
+                cosf(coneAngle) * cosf(sectorAngle)
+            )));
+
+            // calculate texture coordinate
+            textureCoordinate.x = (float)j / sectorCount;
+            textureCoordinate.y = t;
+            textCoords.push_back(textureCoordinate);
+        }
+    }
+
+    int baseCenterIndex = (int)vertices.size();
+    int topCenterIndex = baseCenterIndex + sectorCount + 1; // include center vertex
+
+    // put base and top vertices to arrays
+    for (int i = 0; i < 2; ++i)
+    {
+        float h = -height / 2.0f + i * height;           // z value; -h/2 to h/2
+        float ny = -1 + i * 2;                           // z value of normal; -1 to 1
+
+        // center point
+        vertices.push_back(glm::vec3(0.0f, h, 0.0f));
+        normals.push_back(glm::vec3(0.0f, ny, 0.0f));
+        textCoords.push_back(glm::vec2(0.5f, 0.5f));
+
+        for (int j = 0, k = 0; j < sectorCount; ++j, k += 3)
+        {
+            float ux = unitCircleVertices[k];
+            float uz = unitCircleVertices[k + 2];
+            // position vector
+            float sphereRadius = (i == 0) ? baseRadius : topRadius;
+            cylinderVertexPos.x = ux * sphereRadius;
+            cylinderVertexPos.y = h;
+            cylinderVertexPos.z = uz * sphereRadius;
+            vertices.push_back(cylinderVertexPos);
+
+            // normal vector
+            normals.push_back(glm::vec3(0.0f, ny, 0.0f));
+
+            // texture coordinate
+            textureCoordinate.x = -ux * 0.5f + 0.5f;
+            textureCoordinate.y = -uz * 0.5f + 0.5f;
+            textCoords.push_back(textureCoordinate);
+
+        }
+    }
+
+    unsigned int k1 = 0;                         // 1st vertex index at base
+    unsigned int k2 = sectorCount + 1;           // 1st vertex index at top
+
+    // indices for the side surface
+    for (int i = 0; i < sectorCount; ++i, ++k1, ++k2)
+    {
+        // 2 triangles per sector
+        // k1 => k1+1 => k2
+        indices.push_back(glm::ivec3(k1, k2, k1 + 1));
+
+
+        // k2 => k1+1 => k2+1
+        indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+        maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
+    }
+
+    for (unsigned int i = 0, k = baseCenterIndex + 1; i < sectorCount; ++i, ++k)
+    {
+        if (i < sectorCount - 1)
+        {
+            indices.push_back(glm::ivec3(baseCenterIndex, k + 1, k));
+        }
+        else // last triangle
+        {
+            indices.push_back(glm::ivec3(baseCenterIndex, baseCenterIndex + 1, k));
+        }
+        maxElementIndice = std::max(maxElementIndice, k);
+    }
+
+    // indices for the top surface
+    if (topRadius != 0) {
+        for (unsigned int i = 0, k = topCenterIndex + 1; i < sectorCount; ++i, ++k)
+        {
+            if (i < sectorCount - 1)
+            {
+                indices.push_back(glm::ivec3(topCenterIndex, k, k + 1));
+            }
+            else // last triangle
+            {
+                indices.push_back(glm::ivec3(topCenterIndex, k, topCenterIndex + 1));
+            }
+            maxElementIndice = std::max(maxElementIndice, k);
+        }
+    }
+    return maxElementIndice + 1;
+}
+
+unsigned int cone(float radius, int sectorCount, float height,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+    return truncatedCone(0.0f, radius, sectorCount, height, vertices, normals, indices, textCoords);
+}
+
+unsigned int cylinder(float radius, int sectorCount, float height,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+    return truncatedCone(radius, radius, sectorCount, height, vertices, normals, indices, textCoords);
+}
+unsigned int capsule(float topRadius, float baseRadius, int sectorCount, int stackCount, float height,
+    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
+    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+    //
+    float xy;
+    float sectorStep = 2.0f * M_PI / float(sectorCount);
+    float stackStep = M_PI / float(stackCount);
+    float sectorAngle, stackAngle;
+    std::vector<float> unitCircleVertices;
+    glm::vec3 capsuleVertexPos;
+    glm::vec2 textureCoordinate;
+
+    float cylinderHeight = height - topRadius - baseRadius;
+    glm::vec3 topCenter(0.0f, cylinderHeight / 2.0f, 0.0f);
+    glm::vec3 baseCenter(0.0f, -cylinderHeight / 2.0f, 0.0f);
+
+    float coneAngle = atanf((baseRadius - topRadius) / cylinderHeight);
+
+    // init variables
+    vertices.resize(0);
+    normals.resize(0);
+    indices.resize(0);
+    textCoords.resize(0);
+
+    // get unit circle vectors on XZ-plane
+    for (int i = 0; i <= sectorCount; ++i) {
+        sectorAngle = i * sectorStep;
+        unitCircleVertices.push_back(sinf(sectorAngle));                 // x
+        unitCircleVertices.push_back(0);                                // y
+        unitCircleVertices.push_back(cosf(sectorAngle));                 // z
+    }
+
+
+    // vertex, normal, texture coordinate
+    for (int x = 0; x < 3; ++x) {
+        switch (x) {
+        case 0:     // top semisphere
+            for (int i = 0; i <= (stackCount / 2); ++i) {
+                stackAngle = M_PI / 2.0f - i * stackStep;
+                xy = topRadius * cosf(stackAngle);
+                capsuleVertexPos.y = topRadius * sinf(stackAngle) + (cylinderHeight / 2);
+                for (int j = 0; j <= sectorCount; ++j) {
+                    sectorAngle = j * sectorStep;
+
+                    // vertex position
+                    capsuleVertexPos.x = xy * sinf(sectorAngle);
+                    capsuleVertexPos.z = xy * cosf(sectorAngle);
+                    vertices.push_back(capsuleVertexPos);
+
+                    // normalized vertex normal
+                    normals.push_back(glm::normalize(capsuleVertexPos - topCenter));
+
+                    // calculate texture coordinate
+                    textureCoordinate.x = float(j) / sectorCount;
+                    textureCoordinate.y = float(i) * (topRadius / height) / stackCount;
+                    textCoords.push_back(textureCoordinate);
+                }
+            }
+            break;
+        case 1:     // cylinder
+            for (int i = 1; i >= 0; --i) {
+                float h = -cylinderHeight / 2.0f + i * cylinderHeight;           // z value; h/2 to -h/2
+                float t = 1.0f - i;                              // vertical tex coord; 1 to 0
+                for (int j = 0, k = 0; j <= sectorCount; ++j, k += 3) {
+                    sectorAngle = j * sectorStep;
+
+                    float ux = unitCircleVertices[k];
+                    float uy = unitCircleVertices[k + 1];
+                    float uz = unitCircleVertices[k + 2];
+                    // position vector
+                    float capsuleRadius = (i == 0) ? baseRadius : topRadius;
+                    capsuleVertexPos.x = ux * capsuleRadius;
+                    capsuleVertexPos.y = h;
+                    capsuleVertexPos.z = uz * capsuleRadius;
+                    vertices.push_back(capsuleVertexPos);
+
+                    // normal vector
+                    normals.push_back(glm::normalize(glm::vec3(
+                        cosf(coneAngle) * sinf(sectorAngle),
+                        sinf(coneAngle),
+                        cosf(coneAngle) * cosf(sectorAngle)
+                    )));
+
+                    // calculate texture coordinate
+                    textureCoordinate.x = (float)j / sectorCount;
+                    textureCoordinate.y = (i == 1) ? (topRadius / height) : ((height - baseRadius) / height);
+                    textCoords.push_back(textureCoordinate);
+                }
+            }
+            break;
+        case 2:     // bottom semisphere
+            for (int i = (stackCount / 2); i <= stackCount; ++i) {
+                stackAngle = M_PI / 2.0f - i * stackStep;
+                xy = baseRadius * cosf(stackAngle);
+                capsuleVertexPos.y = (baseRadius * sinf(stackAngle)) - (cylinderHeight / 2);
+                for (int j = 0; j <= sectorCount; ++j) {
+                    sectorAngle = j * sectorStep;
+
+                    // vertex position
+                    capsuleVertexPos.x = xy * sinf(sectorAngle);
+                    capsuleVertexPos.z = xy * cosf(sectorAngle);
+                    vertices.push_back(capsuleVertexPos);
+
+                    // normalized vertex normal
+                    normals.push_back(glm::normalize(capsuleVertexPos - baseCenter));
+
+                    // calculate texture coordinate
+                    textureCoordinate.x = float(j) / sectorCount;
+                    textureCoordinate.y = (float(i) * ((baseRadius) / height)/ stackCount) + ((height - baseRadius) / height);
+                    textCoords.push_back(textureCoordinate);
+                }
+            }
+            break;
+        }
+    }
+
+    // indices
+        // compute triangle indices
+    unsigned int k1, k2;
+    unsigned int maxElementIndice;
+    for (int i = 0; i < (stackCount + 3); ++i) {
+        k1 = i * (sectorCount + 1);
+        k2 = k1 + sectorCount + 1;
+
+        for (int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
+            // 2 triangles per sector excluding first and last stacks
+            // k1 => k2 => k1+1
+            if (i != 0) {
+                indices.push_back(glm::ivec3(k1, k2, k1 + 1));
+            }
+            // k1+1 => k2 => k2+1
+            if (i != (stackCount + 2)) {
+                indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+            }
+            maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
+        }
+    }
+    return maxElementIndice + 1;
+}
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -287,6 +667,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
+
     // Get the size of the window
     int width, height;
     glfwGetWindowSize(window, &width, &height);
@@ -298,10 +679,51 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         std::cout << xpos << " " << ypos << std::endl;
     }
 
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        mode = (mode == 0) ? 1 : 0;
+    }
+}
+
+static void cursor_position_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.5f; // change this value to your liking
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    // make sure that when pitch is out of bounds, screen doesn't get flipped
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+
+    glm::vec3 front;
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraDirection = glm::normalize(front);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    float watchDistance = 5.0f;
     // temp variables
     glm::mat3 rot;
     // Update the position of the first vertex if the keys 1,2, or 3 are pressed
@@ -332,10 +754,16 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         cameraUp = glm::normalize(glm::cross(cameraDirection, cameraRight));
         break;
     case GLFW_KEY_UP:
-        cameraPos -= cameraDirection * 0.25f;
+        cameraPos += cameraDirection * 0.25f;
         break;
     case GLFW_KEY_DOWN:
-        cameraPos += cameraDirection * 0.25f;
+        cameraPos -= cameraDirection * 0.25f;
+        break;
+    case GLFW_KEY_LEFT:
+        cameraPos -= glm::normalize(glm::cross(cameraDirection, cameraUp)) * 0.25f;
+        break;
+    case GLFW_KEY_RIGHT:
+        cameraPos += glm::normalize(glm::cross(cameraDirection, cameraUp)) * 0.25f;
         break;
     case GLFW_KEY_R:
         cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
@@ -488,7 +916,69 @@ int main(void)
     // 1: generate sphere, 0: load OFF model
 #if 1
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    sphere(glm::vec3(-.0,0,0), .5f, 20, 20, V, VN, T);
+    std::vector<Object*> objs;
+
+    
+    Torus ta(1.0f, 0.5f, 5, 5);
+    ta.maxIndex = torus(1.0f, 0.5f, 5, 5, ta.vertices, ta.normals, ta.indices, ta.texCoords);
+    ta.offset(glm::vec3(0.0f, -2.0f, 0.0));
+    objs.push_back(&ta);
+
+    Torus tb(0.5f, 0.2f, 30, 30);
+    tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
+    tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
+    objs.push_back(&tb);
+
+
+    Sphere tc(0.2f, 30, 30);
+    tc.maxIndex = sphere(0.2f, 30, 30, tc.vertices, tc.normals, tc.indices, tc.texCoords);
+    std::cout << tc.maxIndex << " " << tc.vertices.size() << " " << tc.indices.size();
+    tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
+    objs.push_back(&tc);
+
+    TruncatedCone td(0.2f, 0.4f, 30, 1);
+    td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
+    objs.push_back(&td);
+
+    Plane te(glm::vec3(-1.0f, 0.0f, -1.0f), glm::vec3(1.0f, 0.0f, -1.0f));
+    objs.push_back(&te);
+
+    int indicesMax = 0;
+    V.resize(0); VN.resize(0); T.resize(0);
+    for (Object* i : objs) {
+        V.insert(V.end(), i->vertices.begin(), i->vertices.end());
+        VN.insert(VN.end(), i->normals.begin(), i->normals.end());
+        i->adjustIndice(indicesMax);
+        T.insert(T.end(), i->indices.begin(), i->indices.end());
+        indicesMax += i->maxIndex + 1;
+        TC.insert(TC.end(), i->texCoords.begin(), i->texCoords.end());
+    }
+
+
+    int objNum = 6;
+    switch (objNum){
+    case 0:
+        sphere(1.0f, 30, 30, V, VN, T, TC);
+        break;
+    case 1:
+        cylinder(1.0f, 30, 3, V, VN, T, TC);
+        break;
+    case 2:
+        torus(1.0f, 0.5f, 30, 30, V, VN, T, TC);
+        break;
+    case 3:
+        cone(1.0f, 30, 3.0f, V, VN, T, TC);
+        break;
+    case 4:
+        capsule(0.3f, 0.3f, 30, 30, 2.0f, V, VN, T, TC);
+        break;
+    case 5:
+        truncatedCone(0.2f, 0.4f, 30, 1, V, VN, T, TC);
+        break;
+    default:
+        break;
+    }
+    
     VBO.update(V);
     NBO.update(VN);
     IndexBuffer.update(T);
@@ -571,6 +1061,9 @@ int main(void)
     // Register the mouse callback
     glfwSetMouseButtonCallback(window, mouse_button_callback);
 
+    // Register the cursor move callback
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+
     // Update viewport
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
@@ -640,7 +1133,18 @@ int main(void)
         glfwGetWindowSize(window, &width, &height);
 
         // matrix calculations
-        viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+        switch (mode)
+        {
+        case 0:
+            viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+            break;
+        case 1:
+            viewMatrix = glm::lookAt(cameraPos, cameraPos + cameraDirection, cameraUp);
+            break;
+        default:
+            viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+            break;
+        }
         projMatrix = glm::perspective(glm::radians(35.0f), (float)width / (float)height, 0.1f, 100.0f);
 
         // Bind your VAO (not necessary if you have only one)
@@ -656,7 +1160,7 @@ int main(void)
         program.bind();
 
         // Set the uniform values
-        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
+        glUniform3f(program.uniform("triangleColor"), 0.79f, 0.75f, 0.9f);
         glUniform3f(program.uniform("camPos"), cameraPos.x, cameraPos.y, cameraPos.z);
         glUniformMatrix4fv(program.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
         glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
@@ -676,6 +1180,7 @@ int main(void)
         // Draw a triangle
         //glDrawArrays(GL_TRIANGLES, 0, V.size());
         glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
+        //glDrawElements(GL_LINES, T.size() * 3, GL_UNSIGNED_INT, 0);
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
