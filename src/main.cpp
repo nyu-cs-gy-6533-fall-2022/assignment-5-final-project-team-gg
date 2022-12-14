@@ -957,7 +957,7 @@ int main(void)
     // objs.push_back(&ta);
 
     Torus tb(0.5f, 0.2f, 30, 30);
-    tb.maxIndex = torus(0.5f, 0.2f, 10, 10, tb.vertices, tb.normals, tb.indices, tb.texCoords);
+    tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
     tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
     objs.push_back(&tb);
 
@@ -973,20 +973,24 @@ int main(void)
     // objs.push_back(&td);
 
     Plane te(glm::vec3(-3.0f, 0.0f, -3.0f), glm::vec3(3.0f, 0.0f, -3.0f));
-    //te.offset(glm::vec3( - 1.0f, 0.0f, 0.0f));
-    te.reflect = false;
+    te.offset(glm::vec3( 0.0f, 5.0f, 0.0f));
+    te.reflect = true;
     objs.push_back(&te);    
+
+    Plane te2(glm::vec3(-3.0f, 0.0f, -3.0f), glm::vec3(3.0f, 0.0f, -3.0f));
+    te2.offset(glm::vec3( 0.0f, -5.0f, 0.0f));
+    te2.reflect = false;
+    objs.push_back(&te2);   
 
 
     int indicesMax = 0;
     V.resize(0); VN.resize(0); T.resize(0);
     for (Object* i : objs) {
-        int vsize = V.size();
+        indicesMax = V.size();
         V.insert(V.end(), i->vertices.begin(), i->vertices.end());
         VN.insert(VN.end(), i->normals.begin(), i->normals.end());
-        i->adjustIndice(vsize);
+        i->adjustIndice(indicesMax);
         T.insert(T.end(), i->indices.begin(), i->indices.end());
-        indicesMax += vsize;
         TC.insert(TC.end(), i->texCoords.begin(), i->texCoords.end());
         TBO_prepare(tbo, V, VN, i->indices, i->color, i->reflect, i->light);
     }
