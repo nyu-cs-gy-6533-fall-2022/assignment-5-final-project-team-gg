@@ -8,29 +8,29 @@
 
 class Light {
 public:
-    Light(int identifier = 0, float Ia = 0.2f, float Ii = 1.0f) {
+    Light(int identifier = 0, float Ia = 0.2f, float Ii = 1.0f, glm::vec3 direction = glm::vec3(0.0, 0.0, 0.0)) {
         this->identifier = identifier;
         I_a = Ia;
         I_i = Ii;
+        this->direction = direction;
     }
-    // 0: direction, 1: Point, 2: Spot, 3: area
-    int identifier;
 
     float I_a;
     float I_i;
 
-    std::vector<glm::vec3> vertice;
-    glm::vec3 dir;
+    // 0: directionection, 1: Point, 2: Spot, 3: area
+    int identifier;
+    std::vector<glm::vec3> vertices;
+    glm::vec3 direction;
 };
 
-// 1: identifier 4: vertex 1: direction
+// 1: identifier 4: vertex 1: directionection
 
-class DirectionalLight : public Light {
+class directionectionalLight : public Light {
 public:
-    glm::vec3 direction;
-    DirectionalLight(glm::vec3 d) : Light() {
+    directionectionalLight(glm::vec3 d) : Light() {
         identifier = 0;
-        for (int i = 0; i < 4; i++) vertice.push_back(glm::vec3(0, 0, 0));
+        for (int i = 0; i < 4; i++) vertices.push_back(glm::vec3(0, 0, 0));
         direction = d;
     }
 };
@@ -43,9 +43,8 @@ public:
         identifier = 1;
 
         position = p;
-        vertice.push_back(position);
-        for (int i = 0; i < 3; i++) vertice.push_back(glm::vec3(0, 0, 0));
-
+        vertices.push_back(position);
+        for (int i = 0; i < 3; i++) vertices.push_back(glm::vec3(0, 0, 0));
 
     }
 };
@@ -53,20 +52,35 @@ public:
 
 class SpotLight : public Light {
 public:
-    glm::vec3 postion;
-    glm::vec3 direction;
-    float angle;
     SpotLight(glm::vec3 p, glm::vec3 d, float a) : Light() {
-        postion = p;
+        identifier = 2;
+
+        vertices.push_back(p);
+        vertices.push_back(glm::vec3(a, 0.0, 0.0));
+        for (int i = 0; i < 2; i++) vertices.push_back(glm::vec3(0, 0, 0));
+
         direction = d;
-        angle = a;
+
     }
 };
 
 
 class Arealight : public Light {
 public:
-    std::vector<glm::vec3> vertex;
+    Arealight(glm::vec3 v1, glm::vec3 v2, glm::vec3 center) : Light() {
+        identifier = 3;
+
+        glm::vec3 v3, v4;
+        v3 = center + (center - v1);
+        v4 = center + (center - v2);
+        vertices.push_back(v1);
+        vertices.push_back(v2);
+        vertices.push_back(v3);
+        vertices.push_back(v4);
+
+        direction = glm::normalize( glm::cross((v1 - center), (v2 - center)) );
+
+    }
 
 };
 
