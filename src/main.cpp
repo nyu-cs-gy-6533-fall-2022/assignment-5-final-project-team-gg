@@ -859,8 +859,8 @@ int main(void)
     std::vector<Object*> objs;
 
     
-    Torus ta(1.0f, 0.5f, 3, 3);
-    ta.maxIndex = torus(1.0f, 0.5f, 3, 3, ta.vertices, ta.normals, ta.indices, ta.texCoords);
+    Torus ta(1.0f, 0.5f, 5, 5);
+    ta.maxIndex = torus(1.0f, 0.5f, 5, 5, ta.vertices, ta.normals, ta.indices, ta.texCoords);
     ta.offset(glm::vec3(0.0f, -2.0f, 0.0));
     objs.push_back(&ta);
 
@@ -879,6 +879,9 @@ int main(void)
     TruncatedCone td(0.2f, 0.4f, 30, 1);
     td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
     objs.push_back(&td);
+
+    Plane te(glm::vec3(-1.0f, 0.0f, -1.0f), glm::vec3(1.0f, 0.0f, -1.0f));
+    objs.push_back(&te);
 
     int indicesMax = 0;
     V.resize(0); VN.resize(0); T.resize(0);

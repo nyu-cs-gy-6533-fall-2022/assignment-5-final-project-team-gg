@@ -11,8 +11,17 @@ uniform vec3 lightPos;
 uniform vec3 lightParams;
 uniform vec3 camPos;
 
+struct Light {
+    // vec3 position; // no longer necessary when using directional lights.
+    vec3 direction;
+  
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
 void main()
 {
+
     vec3 col = color;
     vec3 normal = normalize(n);
     vec3 lightDir = normalize(lightPos - pos);

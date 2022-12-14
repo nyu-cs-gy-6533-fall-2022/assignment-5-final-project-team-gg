@@ -9,15 +9,17 @@
 class Object{
 public:
 	Object(glm::vec3 coords = glm::vec3(0.0, 0.0, 0.0), glm::vec3 col = glm::vec3(1.0, 1.0, 0.0), unsigned int maxI = 0,
-		bool reflecting = false, bool refracting = false,
+		bool reflecting = false, bool refracting = false, bool lighting = false,
 		float ambientFactor = 0.2f, float specExponent = 50.0f) {
+
 		this->coords = coords;
 		color = col; 
 		maxIndex = maxI;
 		reflect = reflecting;
 		refract = refracting;
-		ambient = ambientFactor; 
-		specularEx = specExponent; 
+		light = lighting;
+		ambient = ambientFactor;
+		specularEx = specExponent;
 	};
 	// intersection function: returns the closest intersection point with the given ray (or a negative value, if none exists)
 	// output parameters: location of the intersection, object normal
@@ -33,9 +35,6 @@ public:
 		coords += os;
 		for (glm::vec3& i : this->vertices) {
 			i += os;
-	
-			//if(i.y > -1)
-			//	std::cout << i.x << " " << i.y << " " << i.z << std::endl;
 		}
 	}
 
@@ -71,9 +70,29 @@ public:
 	// is this object reflecting?
 	bool reflect;
 	bool refract;
+	bool light;
 
 private:
 
+};
+
+class Plane : public Object {
+public:
+	float length;
+	float width;
+	glm::vec3 normal;
+	Plane(glm::vec3 p1, glm::vec3 p2) : Object() {
+		glm::vec3 p3 = -p1;
+		glm::vec3 p4 = -p2;
+		length = glm::distance(p1, p2);
+		width = glm::distance(p2, p3);
+		normal = glm::normalize(glm::cross(p1, p2));
+
+		vertices.push_back(p1); vertices.push_back(p2); vertices.push_back(p4); vertices.push_back(p3);
+		for (int i = 0; i < 4; i++) normals.push_back(normal);
+		indices.push_back(glm::vec3(0, 2, 1)); indices.push_back(glm::vec3(1, 2, 3));
+		maxIndex = 4;
+	}
 };
 
 
