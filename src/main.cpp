@@ -47,7 +47,7 @@ std::vector<glm::ivec3> T;
 std::vector<glm::vec2> TC;
 // data for tbo
 std::vector<float> tbo;
-
+std::vector<float> tbo2;
 // Last position of the mouse on click
 double xpos, ypos;
 
@@ -825,6 +825,24 @@ void TBO_prepare(std::vector<float>& tbo, std::vector<glm::vec3>& vertex, std::v
 }
 
 
+void TBO2_prepare(std::vector<float>& tbo, int id, 
+    std::vector<glm::vec3>& vertex,
+    glm::vec3 direction) {
+    tbo.push_back((float)id);
+    for (int i = 0; i < 4; ++i) {
+        // positions
+        tbo.push_back(vertex[i].x);
+        tbo.push_back(vertex[i].y);
+        tbo.push_back(vertex[i].z);
+    }
+
+    tbo.push_back(direction.x);
+    tbo.push_back(direction.y);
+    tbo.push_back(direction.z);
+
+}
+
+
 void TBO_test(std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
                     std::vector<glm::ivec3>& tria){
     vertex.push_back(glm::vec3(-10, -10, -3));
@@ -844,6 +862,8 @@ void TBO_test(std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal,
     tria.push_back(glm::vec3(vertex.size()-3,vertex.size()-2,vertex.size()-1));
     //
 }
+
+
 
 
 int main(void)
@@ -928,7 +948,7 @@ int main(void)
     // objs.push_back(&ta);
 
     Torus tb(0.5f, 0.2f, 30, 30);
-    tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
+    tb.maxIndex = torus(0.5f, 0.2f, 10, 10, tb.vertices, tb.normals, tb.indices, tb.texCoords);
     tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
     objs.push_back(&tb);
 
@@ -944,7 +964,7 @@ int main(void)
     // objs.push_back(&td);
 
     Plane te(glm::vec3(-1.0f, 0.0f, -3.0f), glm::vec3(1.0f, 0.0f, -3.0f));
-    te.reflect = true;
+    te.reflect = false;
     objs.push_back(&te);
 
     int indicesMax = 0;
