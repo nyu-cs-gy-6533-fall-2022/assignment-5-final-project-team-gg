@@ -3,6 +3,7 @@
 // OpenGL Helpers to reduce the clutter
 #include "Helpers.h"
 #include "object.h"
+#include "light.h"
 
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
@@ -825,9 +826,10 @@ void TBO_prepare(std::vector<float>& tbo, std::vector<glm::vec3>& vertex, std::v
 }
 
 
-void TBO2_prepare(std::vector<float>& tbo, int id, 
+void TBOlight_prepare(std::vector<float>& tbo, int id, 
     std::vector<glm::vec3>& vertex,
-    glm::vec3 direction) {
+    glm::vec3 direction,
+    float Ia, float Ii) {
     tbo.push_back((float)id);
     for (int i = 0; i < 4; ++i) {
         // positions
@@ -839,6 +841,10 @@ void TBO2_prepare(std::vector<float>& tbo, int id,
     tbo.push_back(direction.x);
     tbo.push_back(direction.y);
     tbo.push_back(direction.z);
+
+    tbo.push_back(Ia);
+    tbo.push_back(Ii);
+
 
 }
 
@@ -938,8 +944,9 @@ int main(void)
 
     // 1: generate sphere, 0: load OFF model
 #if 1
-    // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
+    //////////////////////////////object//////////////////////////////////////////
     std::vector<Object*> objs;
+    std::vector<Light*> ligs;
 
     
     // Torus ta(1.0f, 0.5f, 5, 5);
@@ -979,6 +986,15 @@ int main(void)
         TBO_prepare(tbo, V, VN, i->indices, i->color, i->reflect, i->light);
     }
 
+    ///////////////////////////////////////////light///////////////////////////////////////////////
+    PointLight pa(glm::vec3(-1.0f, 2.0f, 3.0f));
+    ligs.push_back(&pa);
+    PointLight pb(glm::vec3(1.0f, 2.0f, 3.0f));
+    ligs.push_back(&pb);
+
+    for (Light* i : ligs) {
+        TBOlight_prepare(tbo2, i->identifier, i->vertices, i->direction, i->I_a, i->I_i);
+    }
 
     int objNum = 6;
     switch (objNum){
@@ -1119,6 +1135,26 @@ int main(void)
 
     glUniform1i(glGetUniformLocation(program.program_shader, "tria"), 0);
     glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size"), T.size());
+
+    //
+    // tbo2: id, pos1, pos2, pos3, pos4, dir
+    // for test
+    unsigned int TBO_tex2;
+    GLuint TBO2;
+    glGenBuffers(1, &TBO2);
+    glBindBuffer(GL_TEXTURE_BUFFER, TBO2);
+
+    glBufferData(GL_TEXTURE_BUFFER, tbo2.size() * sizeof(float), &tbo2[0], GL_STATIC_DRAW);
+
+
+    glGenTextures(1, &TBO_tex2);
+    glBindBuffer(GL_TEXTURE_BUFFER, 0);
+
+
+    glUniform1i(glGetUniformLocation(program.program_shader, "tria2"), 0);
+    glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size2"), ligs.size());
+
+
     //
     std::cout<<tbo.size()<<std::endl;
 

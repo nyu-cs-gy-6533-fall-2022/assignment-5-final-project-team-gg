@@ -1,5 +1,5 @@
-#ifndef OBJECT_H_
-#define OBJECT_H_
+#ifndef LIGHT_H_
+#define LIGHT_H_
 
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
@@ -19,12 +19,12 @@ public:
     float I_i;
 
     // 0: directionection, 1: Point, 2: Spot, 3: area
-    int identifier;
+    float identifier;
     std::vector<glm::vec3> vertices;
     glm::vec3 direction;
 };
 
-// 1: identifier 4: vertex 1: directionection
+// 1: identifier 4: vertex 1: directionection 1:Ia 1:Ii
 
 class directionectionalLight : public Light {
 public:

@@ -6,8 +6,10 @@ in vec3 n;
 in vec3 color;
 in vec3 pos;
 
-uniform samplerBuffer tria; 
+uniform samplerBuffer tria;
+uniform samplerBuffer tria2;
 uniform int tbo_size;
+uniform int tbo_size2;
 
 uniform vec3 triangleColor;
 uniform vec3 lightPos;
