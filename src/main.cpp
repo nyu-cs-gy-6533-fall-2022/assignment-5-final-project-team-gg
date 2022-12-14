@@ -958,7 +958,8 @@ int main(void)
 
     Torus tb(0.5f, 0.2f, 30, 30);
     tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
-    //tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
+    tb.color = glm::vec3(1.0, 0.0, 0.0);
+    tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
 
     objs.push_back(&tb);
 
@@ -969,39 +970,47 @@ int main(void)
     // tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
     // objs.push_back(&tc);
 
-    // TruncatedCone td(0.2f, 0.4f, 30, 1);
-    // td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
-    // objs.push_back(&td);
+    TruncatedCone td(0.2f, 0.4f, 30, 1);
+    td.maxIndex = truncatedCone(0.5f, 0.8f, 30, 0.5, td.vertices, td.normals, td.indices, td.texCoords);
+    td.offset(glm::vec3(1.0, -1.0, 0.0));
+    td.color = glm::vec3(0.0, 1.0, 0.0);
+    objs.push_back(&td);
 
-    Plane te(glm::vec3(-3.0f, 0.0f, -3.0f), glm::vec3(3.0f, 0.0f, -3.0f));
-    te.offset(glm::vec3( 0.0f, 3.0f, 0.0f));
+    Cone tf(0.2f, 2.0f, 30);
+    tf.maxIndex = cone(0.3f, 30, 0.5f, tf.vertices, tf.normals, tf.indices, tf.texCoords);
+    tf.offset(glm::vec3(-1.0, 1.0, 0.0));
+    tf.color = glm::vec3(1.0, 0.5, 0.0);
+    objs.push_back(&tf);
+
+    Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
+    te.offset(glm::vec3( 0.0f, 10.0f, 0.0f));
     te.reflect = true;
     objs.push_back(&te);    
 
-    Plane te2(glm::vec3(-3.0f, 0.0f, -3.0f), glm::vec3(3.0f, 0.0f, -3.0f));
-    te2.offset(glm::vec3( 0.0f, -3.0f, 0.0f));
+    Plane te2(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
+    te2.offset(glm::vec3( 0.0f, -10.0f, 0.0f));
     te2.reflect = false;
     objs.push_back(&te2);
 
-    Plane te3(glm::vec3(-3.0f, 3.0f, 0.0f), glm::vec3(3.0f, 3.0f, 0.0f));
-    te3.offset(glm::vec3( 0.0f, 0.0f, -3.0f));
+    Plane te3(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
+    te3.offset(glm::vec3( 0.0f, 0.0f, -10.0f));
     te3.reflect = false;
     objs.push_back(&te3);
 
-    Plane te4(glm::vec3(-3.0f, 3.0f, 0.0f), glm::vec3(3.0f, 3.0f, 0.0f));
-    te4.offset(glm::vec3( 0.0f, .0f, 3.0f));
+    Plane te4(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
+    te4.offset(glm::vec3( 0.0f, .0f, 10.0f));
     te4.reflect = false;  
     objs.push_back(&te4);
 
-    Plane te5(glm::vec3(0.0f, 3.0f, 3.0f), glm::vec3(0.0f, 3.0f, -3.0f));
-    te5.offset(glm::vec3( 3.0f, 0.0f, 0.0f));
+    Plane te5(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
+    te5.offset(glm::vec3( 10.0f, 0.0f, 0.0f));
     te5.reflect = false;
     objs.push_back(&te5);
 
-    // Plane te6(glm::vec3(0.0f, 3.0f, 3.0f), glm::vec3(0.0f, 3.0f, -3.0f));
-    // te6.offset(glm::vec3( -3.0f, -0.0f, 0.0f));
-    // te6.reflect = false;
-    // objs.push_back(&te6);   
+    Plane te6(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
+    te6.offset(glm::vec3( -10.0f, -0.0f, 0.0f));
+    te6.reflect = false;
+    objs.push_back(&te6);   
 
 
     int indicesMax = 0;
@@ -1017,9 +1026,9 @@ int main(void)
     }
 
     ///////////////////////////////////////////light///////////////////////////////////////////////
-    PointLight pa(glm::vec3(0.0f, 0.0f, 0.0f));
+    PointLight pa(glm::vec3(-3.0f, 3.0f, -3.0f));
     ligs.push_back(&pa);
-    PointLight pb(glm::vec3(1.0f, 2.0f, 1.0f));
+    PointLight pb(glm::vec3(3.0f, 3.0f, 3.0f));
     ligs.push_back(&pb);
 
     for (Light* i : ligs) {
