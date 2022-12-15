@@ -1040,7 +1040,7 @@ int main(void)
     std::vector<Light*> ligs;
 
     PointLight la(glm::vec3(-0.0f, 4.0f, -0.0f));
-    //ligs.push_back(&la);
+    ligs.push_back(&la);
 
     PointLight lb(glm::vec3(2.0f, 4.0f, 2.0f));
     //ligs.push_back(&lb);
@@ -1048,8 +1048,11 @@ int main(void)
     SpotLight lc(glm::vec3(1.0, 1.0, 1.0), glm::vec3(-1.0,-1.0,-1.0), 40);
     //ligs.push_back(&lc);
 
-    DirectionalLight ld(glm::vec3(0.0, -1.0, 0.0));
-    ligs.push_back(&ld);
+    DirectionalLight ld(glm::vec3(0.1, -1.0, 0.1));
+    //ligs.push_back(&ld);
+
+    Arealight le(glm::vec3(-1.2, 3, -1.3), glm::vec3(-1.4, 3.3, 1), glm::vec3(0.2, 3.2, 0.4));
+    ligs.push_back(&le);
 
     for (Light* i : ligs) {
         TBOlight_prepare(tbo2, i->identifier, i->vertices, i->direction, i->I_a, i->I_i);

@@ -194,6 +194,25 @@ vec3 Phong3(vec3 color, vec3 normal, vec3 position, vec3 cam_pos, Light l){
                     l.Ii * vec3(1.0) * pow(vr, 50),
                     0.0, 1.0);
             break;
+        case 3:
+            Intersection temp_inter1, temp_inter2;
+            int flag;
+            Ray ray = Ray(position, normalize(-l.dir));
+            Triangle t1 = Triangle(l.p1, l.p2, l.p3, l.dir, l.dir, l.dir, vec3(0.0), false, false, 0);
+            Triangle t2 = Triangle(l.p3, l.p4, l.p1, l.dir, l.dir, l.dir, vec3(0.0), false, false, 0);
+            temp_inter1 = intersect(ray, t1);
+            temp_inter2 = intersect(ray, t2);
+            flag = ( temp_inter1.is_intersecting ) ? 1 : 2;
+            vec3 interPos = ( flag == 1 ) ? temp_inter1.position : temp_inter2.position;
+            light_dir = normalize(interPos - position);
+            ref = normalize( reflect(-light_dir, normal));
+            nl = clamp( dot( normal, light_dir ), 0.0, 1.0);
+            vr = clamp( dot( cam_dir, ref ), 0.0, 1.0);
+            return clamp( color * l.Ia + 
+                    color * nl * l.Ii + 
+                    l.Ii * vec3(1.0) * pow(vr, 50),
+                    0.0, 1.0);
+            break;
     
     }
 
@@ -208,7 +227,7 @@ vec3 shadow2(Intersection inter, Light l){
     vec3 light_dir;
     Ray ray;
     switch(int(l.id)){
-        case 0:
+        case 0: // directional light
             ray = Ray(position, normalize(-l.dir));
             for(int j = 0; j < tbo_size; ++j){
             // generate the triangle
@@ -246,6 +265,28 @@ vec3 shadow2(Intersection inter, Light l){
                     if(temp_inter.is_intersecting && temp_inter.d > epsilon && temp_inter.d < length(l.p1 - position) && id != triangle.id){
                         return clamp(inter.color * l.Ia, 0.0, 1.0);
                     }
+                }
+            }
+            break;
+        case 3: // area light
+            Intersection temp_inter1, temp_inter2;
+            int flag = 0;
+            ray = Ray(position, normalize(l.dir));
+            Triangle t1 = Triangle(l.p1, l.p2, l.p3, l.dir, l.dir, l.dir, vec3(0.0), false, false, 0);
+            Triangle t2 = Triangle(l.p3, l.p4, l.p1, l.dir, l.dir, l.dir, vec3(0.0), false, false, 0);
+            temp_inter1 = intersect(ray, t1);
+            temp_inter2 = intersect(ray, t2);
+            flag = ( temp_inter1.is_intersecting || temp_inter2.is_intersecting ) ? 1 : 0;
+            if(flag == 0) return vec3(0.0);
+            else flag = ( temp_inter1.is_intersecting ) ? 1 : 2;
+            vec3 interPos = ( flag == 1 ) ? temp_inter1.position : temp_inter2.position;
+
+            for(int j = 0; j < tbo_size; ++j){
+            // generate the triangle
+                Triangle triangle = get_triangle(j);
+                Intersection temp_inter = intersect(ray, triangle);
+                if(temp_inter.is_intersecting && temp_inter.d > epsilon && temp_inter.d < length(interPos - position) && id != triangle.id){
+                    return clamp(inter.color * l.Ia, 0.0, 1.0);
                 }
             }
             break;
@@ -320,6 +361,14 @@ vec3 ray_tracing(){
                     }
                     break;
                 case 2:
+                    temp = shadow2(inter_buffer[k], l);
+                    if(  temp != vec3(-1.0) ){
+                        currentColor = temp;
+                    }else{
+                        currentColor = Phong3(inter_buffer[k].color, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
+                    }
+                    break;
+                case 3:
                     temp = shadow2(inter_buffer[k], l);
                     if(  temp != vec3(-1.0) ){
                         currentColor = temp;
