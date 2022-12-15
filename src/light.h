@@ -59,7 +59,7 @@ public:
         vertices.push_back(glm::vec3(a, 0.0, 0.0));
         for (int i = 0; i < 2; i++) vertices.push_back(glm::vec3(0, 0, 0));
 
-        direction = d;
+        direction = glm::normalize(d);
 
     }
 };

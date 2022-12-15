@@ -989,7 +989,7 @@ int main(void)
     te.offset(glm::vec3( 0.0f, 6.0f, 0.0f));
     te.reflect = false;
     te.color = glm::vec3(0.7, 0.7, 0.9);
-    objs.push_back(&te);    
+    //objs.push_back(&te);    
 
     Plane te2(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
     te2.offset(glm::vec3( 0.0f, -6.0f, 0.0f));
@@ -1038,10 +1038,13 @@ int main(void)
 
     ///////////////////////////////////////////light///////////////////////////////////////////////
     std::vector<Light*> ligs;
-    PointLight pa(glm::vec3(-0.0f, 4.0f, -0.0f));
-    ligs.push_back(&pa);
-    PointLight pb(glm::vec3(2.0f, 4.0f, 2.0f));
-    ligs.push_back(&pb);
+
+    PointLight la(glm::vec3(-0.0f, 4.0f, -0.0f));
+    //ligs.push_back(&la);
+    PointLight lb(glm::vec3(2.0f, 4.0f, 2.0f));
+    ligs.push_back(&lb);
+    SpotLight lc(glm::vec3(1.0, 1.0, 1.0), glm::vec3(-1.0,-1.0,-1.0), 40);
+    ligs.push_back(&lc);
 
     for (Light* i : ligs) {
         TBOlight_prepare(tbo2, i->identifier, i->vertices, i->direction, i->I_a, i->I_i);
