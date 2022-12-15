@@ -152,6 +152,19 @@ vec3 Phong(vec3 color, vec3 normal, vec3 light_pos, vec3 pos, vec3 cam_pos, vec3
             0.0, 1.0);
 }
 
+vec3 Phong2(vec3 color, vec3 normal, vec3 pos, vec3 cam_pos, Light l){
+    normal = normalize(normal);
+    vec3 light_dir = normalize(l.p1 - pos);
+    vec3 cam_dir = normalize(cam_pos - pos);
+    vec3 ref = normalize( reflect(-light_dir, normal));
+    float nl = clamp( dot( normal, light_dir ), 0.0, 1.0);
+    float vr = clamp( dot( cam_dir, ref ), 0.0, 1.0);
+    return clamp( color * l.Ia + 
+            color * nl * l.Ii + 
+            l.Ii * vec3(1.0) * pow(vr, 50),
+            0.0, 1.0);
+}
+
 vec3 Phong1(vec3 color, vec3 normal, vec3 pos, vec3 cam_pos){
     normal = normalize(normal);
     vec3 light_dir;
@@ -191,14 +204,40 @@ bool shadow(Intersection inter){
         // generate the triangle
         Triangle triangle = get_triangle(j);
         Intersection temp_inter = intersect(ray, triangle);
+<<<<<<< Updated upstream
         //if(temp_inter.is_intersecting && temp_inter.d > 0 && temp_inter.d < length(light_pos - position) && id != triangle.id)
         if(temp_inter.is_intersecting && id != triangle.id)
+=======
+        if(temp_inter.is_intersecting && temp_inter.d > 0 && temp_inter.d < length(lightPos - position) && id != triangle.id)
+>>>>>>> Stashed changes
             return true;
     }
     return false;
 }
 
-int shadow2(Intersection inter){
+vec3 shadow2(Intersection inter, Light l){
+    vec3 position = inter.position;
+    int id = inter.triangle_id;
+    Ray ray;
+    switch(int(l.id)){
+        case 1:
+        ray = Ray(position, normalize(l.p1 - pos));
+        for(int j = 0; j < tbo_size; ++j){
+        // generate the triangle
+            Triangle triangle = get_triangle(j);
+            Intersection temp_inter = intersect(ray, triangle);
+            if(temp_inter.is_intersecting && temp_inter.d > 0 && temp_inter.d < length(l.p1 - position) && id != triangle.id){
+                return clamp(inter.color * l.Ia, 0.0, 1.0);
+            }
+        }
+        break;
+    }
+
+    return vec3(-1.0);
+}
+
+
+int shadow1(Intersection inter){
     int count = 0;
     vec3 position = inter.position;
     int id = inter.triangle_id;
@@ -228,7 +267,7 @@ int shadow2(Intersection inter){
 vec3 ray_tracing(){
     Light l = get_light(0);
     int depth = 10;
-    vec3 result;
+    vec3 currentColor, result = vec3(0.0);
     vec3 pos_temp = camPos;
     vec3 dir_temp = normalize(pos - camPos);
     Intersection inter_buffer[10];
@@ -266,18 +305,36 @@ vec3 ray_tracing(){
             dir_temp = normalize(reflect(dir_temp, inter.normal));
         }
     }
-    result = inter_buffer[current_depth].color;
+    currentColor = inter_buffer[current_depth].color;
     for(int k = current_depth; k >=0; --k){
-        int divider = shadow2(inter_buffer[k]);
-        if(divider > 0){
-            result = clamp(result * lightParams.x / divider, 0.0, 1.0);
+        for(int i = 0; i < tbo_size2; i++){
+            Light l = get_light(i);
+            switch(int(l.id)){
+                case 0:
+                break;
+                case 1:
+                    vec3 temp = shadow2(inter_buffer[k], l);
+                    if(  temp != vec3(-1.0) ){
+                        currentColor = temp;
+                    }else{
+                        currentColor = Phong2(currentColor, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
+                    }
+                    break;
+                case 2:
+                break;
+            }
+            result += currentColor;
         }
-        else{
-            result = Phong1(result, inter_buffer[k].normal, inter_buffer[k].position, camPos);
-            //result =  Phong(result, inter_buffer[k].normal, l.p1, inter_buffer[k].position, camPos, lightParams);
-        }
+//        int divider = shadow2(inter_buffer[k]);
+//        if(divider > 0){
+//            result = clamp(result * lightParams.x / divider, 0.0, 1.0);
+//        }
+//        else{
+//            result = Phong1(result, inter_buffer[k].normal, inter_buffer[k].position, camPos);
+//            //result =  Phong(result, inter_buffer[k].normal, l.p1, inter_buffer[k].position, camPos, lightParams);
+//        }
     }
-    return result;
+    return clamp(result, 0.0, 1.0);
 }
 
 void main()
