@@ -948,7 +948,7 @@ int main(void)
 #if 1
     //////////////////////////////object//////////////////////////////////////////
     std::vector<Object*> objs;
-    std::vector<Light*> ligs;
+
 
     
     // Torus ta(1.0f, 0.5f, 5, 5);
@@ -958,7 +958,7 @@ int main(void)
 
     Torus tb(0.5f, 0.2f, 30, 30);
     tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
-    tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
+    //tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
     objs.push_back(&tb);
 
 
@@ -980,24 +980,24 @@ int main(void)
     objs.push_back(&td);
 
     Capsule tf(0.2, 0.8, 20, 20);
-    tf.maxIndex = capsule(0.2, 0.2, 20, 20, 0.8, tf.vertices, tf.normals, tf.indices, tf.texCoords);
-    tf.offset(glm::vec3(-1.0, 1.0, 0.0));
+    tf.maxIndex = capsule(0.2, 0.2, 30, 30, 0.8, tf.vertices, tf.normals, tf.indices, tf.texCoords);
+    tf.offset(glm::vec3(-1.0, 0.0, 0.0));
     tf.color = glm::vec3(1.0, 0.5, 0.0);
     objs.push_back(&tf);
 
     Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
-    te.offset(glm::vec3( 0.0f, 5.0f, 0.0f));
+    te.offset(glm::vec3( 0.0f, 6.0f, 0.0f));
     te.reflect = false;
     objs.push_back(&te);    
 
     Plane te2(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
-    te2.offset(glm::vec3( 0.0f, -5.0f, 0.0f));
+    te2.offset(glm::vec3( 0.0f, -6.0f, 0.0f));
     te2.reflect = false;
     objs.push_back(&te2);
 
     Plane te3(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
     te3.offset(glm::vec3( 0.0f, 0.0f, -6.0f));
-    te3.reflect = true;
+    te3.reflect = false;
     objs.push_back(&te3);
 
     Plane te4(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
@@ -1006,12 +1006,12 @@ int main(void)
     objs.push_back(&te4);
 
     Plane te5(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
-    te5.offset(glm::vec3( 5.0f, 0.0f, 0.0f));
+    te5.offset(glm::vec3( 6.0f, 0.0f, 0.0f));
     te5.reflect = false;
     objs.push_back(&te5);
 
     Plane te6(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
-    te6.offset(glm::vec3( -5.0f, -0.0f, 0.0f));
+    te6.offset(glm::vec3( -6.0f, -0.0f, 0.0f));
     te6.reflect = false;
     objs.push_back(&te6);   
 
@@ -1031,11 +1031,10 @@ int main(void)
 
 
     ///////////////////////////////////////////light///////////////////////////////////////////////
-
-    PointLight pa(glm::vec3(-1.0f, 2.0f, -3.0f));
-
+    std::vector<Light*> ligs;
+    PointLight pa(glm::vec3(-0.0f, 4.0f, -0.0f));
     ligs.push_back(&pa);
-    PointLight pb(glm::vec3(1.0f, 2.0f, 3.0f));
+    PointLight pb(glm::vec3(2.0f, 4.0f, 2.0f));
     ligs.push_back(&pb);
 
     for (Light* i : ligs) {
