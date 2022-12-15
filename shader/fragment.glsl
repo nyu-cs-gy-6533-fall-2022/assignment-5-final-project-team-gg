@@ -234,6 +234,7 @@ vec3 ray_tracing(){
     vec3 dir_temp = normalize(pos - camPos);
     Intersection inter_buffer[10];
     int current_depth = 0;
+    int current_id = -1;
     for(int i = 0; i < depth; ++i){
         Ray ray = Ray(pos_temp, dir_temp);
         float min_distance = -1;
@@ -242,7 +243,8 @@ vec3 ray_tracing(){
             // generate the triangle
             Triangle triangle = get_triangle(j);
             Intersection temp_inter = intersect(ray, triangle);
-            if(temp_inter.is_intersecting && (temp_inter.d < min_distance || min_distance < 0)){
+            if(temp_inter.is_intersecting && (temp_inter.d < min_distance || min_distance < 0)
+                && current_id != temp_inter.triangle_id){
                 min_distance = temp_inter.d;
                 inter = temp_inter;
             }
@@ -252,6 +254,7 @@ vec3 ray_tracing(){
             break;
         }
         inter_buffer[i] = inter;
+        current_id = inter.triangle_id;
         if(!inter.is_reflecting){
             // if(shadow(inter.position, lightPos, inter.triangle_id)){
             //     return clamp(inter.color * lightParams.x, 0.0, 1.0);
