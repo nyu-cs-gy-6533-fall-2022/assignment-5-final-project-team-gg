@@ -16,6 +16,20 @@ uniform vec3 lightPos;
 uniform vec3 lightParams;
 uniform vec3 camPos;
 
+uniform bool vignette;
+uniform float vIntensity;
+uniform float vAmount;
+uniform bool luminance;
+uniform vec3 lumWeight;
+uniform bool brightness;
+uniform float bAmount;
+uniform bool contrast;
+uniform float cAmount;
+uniform bool exposure;
+uniform float eAmount;
+uniform bool gamma;
+uniform float gAmount;
+
 float epsilon = 0.000001;
 
 struct Ray{
@@ -290,4 +304,28 @@ void main()
 //    Light l = get_light(0);
 //    vec3 col = vec3(l.Ia, 0.0, 0.0);
     outColor = vec4(col, 1.0);
+
+    if (vignette) {
+        vec2 uv = gl_FragCoord.xy / vec2(800, 600);
+        uv *= 1.0 - uv.yx;
+        float vig = uv.x*uv.y * vIntensity;
+        vig = pow(vig, vAmount);
+        outColor *= vec4(vig);
+    }
+    if (luminance) {
+        float lum = dot(outColor.rgb, lumWeight);
+        outColor = vec4(vec3(lum), 1.0);
+    }
+    if (brightness) {
+        outColor += bAmount;
+    }
+    if (contrast) {
+        outColor = (outColor - 0.5) * cAmount*2.0 + 0.5;
+    }
+    if (exposure) {
+        outColor = outColor * pow(2.0, eAmount);
+    }
+    if (gamma) {
+        outColor = pow(outColor, vec4(gAmount)*2.2);
+    }
 }

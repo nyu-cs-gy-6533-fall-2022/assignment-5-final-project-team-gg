@@ -70,6 +70,14 @@ float lastY = 600.0 / 2.0;
 //0: static, 1: cursor
 bool mode = 0;
 
+//screen-space method toggles
+bool vignette = false;
+bool luminance = false;
+bool brightness = false;
+bool contrast = false;
+bool exposure = false;
+bool gamma = false;
+
 // PPM Reader code from http://josiahmanson.com/prose/optimize_ppm/
 
 struct RGB {
@@ -777,6 +785,55 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
         break;
+    case GLFW_KEY_1:
+        if (!vignette) {
+            vignette = true;
+        }
+        else {
+            vignette = false;
+        }
+        std::cout << vignette << std::endl;
+        break;
+    case GLFW_KEY_2:
+        if (!luminance) {
+            luminance = true;
+        }
+        else {
+            luminance = false;
+        }
+        break;
+    case GLFW_KEY_3:
+        if (!brightness) {
+            brightness = true;
+        }
+        else {
+            brightness = false;
+        }
+        break;
+    case GLFW_KEY_4:
+        if (!contrast) {
+            contrast = true;
+        }
+        else {
+            contrast = false;
+        }
+        break;
+    case GLFW_KEY_5:
+        if (!exposure) {
+            exposure = true;
+        }
+        else {
+            exposure = false;
+        }
+        break;
+    case GLFW_KEY_6:
+        if (!gamma) {
+            gamma = true;
+        }
+        else {
+            gamma = false;
+        }
+        break;
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
         break;
@@ -1248,6 +1305,23 @@ int main(void)
         glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, 3.0f)));
         // x: ambient; 
         glUniform3f(program.uniform("lightParams"), 0.1f, 50.0f, 0.0f);
+
+        // screen-space methods
+        glUniform1i(program.uniform("vignette"), vignette);
+        glUniform1f(program.uniform("vIntensity"), 15.0f);
+        glUniform1f(program.uniform("vAmount"), 0.25f);
+        glUniform1i(program.uniform("luminance"), luminance);
+        glUniform3f(program.uniform("lumWeight"), 0.3f, 0.3f, 0.4f);
+        glUniform1i(program.uniform("brightness"), brightness);
+        glUniform1f(program.uniform("bAmount"), 0.5f);
+        glUniform1i(program.uniform("contrast"), contrast);
+        glUniform1f(program.uniform("cAmount"), 0.0f);
+        glUniform1i(program.uniform("exposure"), exposure);
+        glUniform1f(program.uniform("eAmount"), 5.0f);
+        glUniform1i(program.uniform("gamma"), gamma);
+        glUniform1f(program.uniform("gAmount"), 5.0f);
+
+
 
         // Clear the framebuffer
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
