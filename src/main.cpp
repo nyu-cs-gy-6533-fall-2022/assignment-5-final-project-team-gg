@@ -1041,10 +1041,15 @@ int main(void)
 
     PointLight la(glm::vec3(-0.0f, 4.0f, -0.0f));
     //ligs.push_back(&la);
+
     PointLight lb(glm::vec3(2.0f, 4.0f, 2.0f));
-    ligs.push_back(&lb);
+    //ligs.push_back(&lb);
+
     SpotLight lc(glm::vec3(1.0, 1.0, 1.0), glm::vec3(-1.0,-1.0,-1.0), 40);
-    ligs.push_back(&lc);
+    //ligs.push_back(&lc);
+
+    DirectionalLight ld(glm::vec3(0.0, -1.0, 0.0));
+    ligs.push_back(&ld);
 
     for (Light* i : ligs) {
         TBOlight_prepare(tbo2, i->identifier, i->vertices, i->direction, i->I_a, i->I_i);

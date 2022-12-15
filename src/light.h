@@ -26,12 +26,12 @@ public:
 
 // 1: identifier 4: vertex 1: directionection 1:Ia 1:Ii
 
-class directionectionalLight : public Light {
+class DirectionalLight : public Light {
 public:
-    directionectionalLight(glm::vec3 d) : Light() {
+    DirectionalLight(glm::vec3 d) : Light() {
         identifier = 0;
         for (int i = 0; i < 4; i++) vertices.push_back(glm::vec3(0, 0, 0));
-        direction = d;
+        direction = normalize(d);
     }
 };
 
