@@ -1046,10 +1046,10 @@ int main(void)
     //ligs.push_back(&lb);
 
     SpotLight lc(glm::vec3(1.0, 1.0, 1.0), glm::vec3(-1.0,-1.0,-1.0), 40);
-    //ligs.push_back(&lc);
+    ligs.push_back(&lc);
 
     DirectionalLight ld(glm::vec3(0.1, -1.0, 0.1));
-    //ligs.push_back(&ld);
+    ligs.push_back(&ld);
 
     Arealight le(glm::vec3(-1.2, 3, -1.3), glm::vec3(-1.4, 3.3, 1), glm::vec3(0.2, 3.2, 0.4));
     ligs.push_back(&le);

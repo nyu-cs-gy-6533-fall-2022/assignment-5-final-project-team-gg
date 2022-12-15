@@ -143,20 +143,6 @@ Intersection intersect(Ray ray, Triangle triangle){
 }
 
 
-
-
-vec3 Phong2(vec3 color, vec3 normal, vec3 position, vec3 cam_pos, Light l){
-    normal = normalize(normal);
-    vec3 cam_dir = normalize(cam_pos - position);
-    vec3 light_dir = normalize(l.p1 - position);
-    vec3 ref = normalize( reflect(-light_dir, normal));
-    float nl = clamp( dot( normal, light_dir ), 0.0, 1.0);
-    float vr = clamp( dot( cam_dir, ref ), 0.0, 1.0);
-    return clamp( color * l.Ia + 
-            color * nl * l.Ii + 
-            l.Ii * vec3(1.0) * pow(vr, 50),
-            0.0, 1.0);
-}
 vec3 Phong3(vec3 color, vec3 normal, vec3 position, vec3 cam_pos, Light l){
     normal = normalize(normal);
     vec3 cam_dir = normalize(cam_pos - position);
@@ -194,7 +180,7 @@ vec3 Phong3(vec3 color, vec3 normal, vec3 position, vec3 cam_pos, Light l){
                     l.Ii * vec3(1.0) * pow(vr, 50),
                     0.0, 1.0);
             break;
-        case 3:
+        case 3: // Area light
             Intersection temp_inter1, temp_inter2;
             int flag;
             Ray ray = Ray(position, normalize(-l.dir));
@@ -238,7 +224,7 @@ vec3 shadow2(Intersection inter, Light l){
                 }
             }
             break;
-        case 1:
+        case 1: // Point light
             ray = Ray(position, normalize(l.p1 - position));
             for(int j = 0; j < tbo_size; ++j){
             // generate the triangle
@@ -249,12 +235,12 @@ vec3 shadow2(Intersection inter, Light l){
                 }
             }
             break;
-        case 2:
+        case 2: // Spot light
             light_dir = l.dir;
             float angle = radians(l.p2.r);
             vec3 va = light_dir;
             vec3 vb = normalize(position - l.p1);
-            float realAngle = acos( length( dot(va, vb) ));
+            float realAngle = acos(  dot(va, vb) );
             if(realAngle > angle) { return vec3(0.0); }
             else{
                 ray = Ray(position, normalize(l.p1 - position));
@@ -268,7 +254,7 @@ vec3 shadow2(Intersection inter, Light l){
                 }
             }
             break;
-        case 3: // area light
+        case 3: // Area light
             Intersection temp_inter1, temp_inter2;
             int flag = 0;
             ray = Ray(position, normalize(l.dir));
@@ -343,39 +329,11 @@ vec3 ray_tracing(){
         for(int i = 0; i < tbo_size2; i++){
             Light l = get_light(i);
             vec3 temp;
-            switch(int(l.id)){
-                case 0:
-                    temp = shadow2(inter_buffer[k], l);
-                    if(  temp != vec3(-1.0) ){
-                        currentColor = temp;
-                    }else{
-                        currentColor = Phong3(inter_buffer[k].color, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
-                    }
-                    break;
-                case 1:
-                    temp = shadow2(inter_buffer[k], l);
-                    if(  temp != vec3(-1.0) ){
-                        currentColor = temp;
-                    }else{
-                        currentColor = Phong3(inter_buffer[k].color, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
-                    }
-                    break;
-                case 2:
-                    temp = shadow2(inter_buffer[k], l);
-                    if(  temp != vec3(-1.0) ){
-                        currentColor = temp;
-                    }else{
-                        currentColor = Phong3(inter_buffer[k].color, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
-                    }
-                    break;
-                case 3:
-                    temp = shadow2(inter_buffer[k], l);
-                    if(  temp != vec3(-1.0) ){
-                        currentColor = temp;
-                    }else{
-                        currentColor = Phong3(inter_buffer[k].color, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
-                    }
-                    break;
+            temp = shadow2(inter_buffer[k], l);
+            if(  temp != vec3(-1.0) ){
+                currentColor = temp;
+            }else{
+                currentColor = Phong3(inter_buffer[k].color, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
             }
             result += currentColor;
         }
@@ -386,7 +344,5 @@ vec3 ray_tracing(){
 void main()
 {
     vec3 col = ray_tracing();
-    //Light l = get_light(0);
-    //vec3 col = vec3(l.p2.r, 0.0, 0.0);
     outColor = vec4(col, 1.0);
 }
