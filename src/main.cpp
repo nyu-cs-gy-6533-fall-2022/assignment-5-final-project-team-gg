@@ -968,11 +968,6 @@ int main(void)
     // tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
     // objs.push_back(&tc);
 
-
-    // TruncatedCone td(0.2f, 0.4f, 30, 1);
-    // td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
-    // objs.push_back(&td); 
-
     TruncatedCone td(0.2f, 0.4f, 30, 1);
     td.maxIndex = truncatedCone(0.5f, 0.8f, 30, 0.5, td.vertices, td.normals, td.indices, td.texCoords);
     td.offset(glm::vec3(1.0, -1.0, 0.0));
@@ -1058,29 +1053,6 @@ int main(void)
         TBOlight_prepare(tbo2, i->identifier, i->vertices, i->direction, i->I_a, i->I_i);
     }
 
-    int objNum = 6;
-    switch (objNum){
-    case 0:
-        sphere(1.0f, 30, 30, V, VN, T, TC);
-        break;
-    case 1:
-        cylinder(1.0f, 30, 3, V, VN, T, TC);
-        break;
-    case 2:
-        torus(1.0f, 0.5f, 30, 30, V, VN, T, TC);
-        break;
-    case 3:
-        cone(1.0f, 30, 3.0f, V, VN, T, TC);
-        break;
-    case 4:
-        capsule(0.3f, 0.3f, 30, 30, 2.0f, V, VN, T, TC);
-        break;
-    case 5:
-        truncatedCone(0.2f, 0.4f, 30, 1, V, VN, T, TC);
-        break;
-    default:
-        break;
-    }
     
     VBO.update(V);
     NBO.update(VN);
