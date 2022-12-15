@@ -988,31 +988,37 @@ int main(void)
     Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
     te.offset(glm::vec3( 0.0f, 6.0f, 0.0f));
     te.reflect = false;
+    te.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te);    
 
     Plane te2(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
     te2.offset(glm::vec3( 0.0f, -6.0f, 0.0f));
     te2.reflect = false;
+    te2.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te2);
 
     Plane te3(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
     te3.offset(glm::vec3( 0.0f, 0.0f, -6.0f));
-    te3.reflect = false;
+    te3.reflect = true;
+    te3.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te3);
 
     Plane te4(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
     te4.offset(glm::vec3( 0.0f, .0f, 6.0f));
-    te4.reflect = false;  
+    te4.reflect = false;
+    te4.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te4);
 
     Plane te5(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
     te5.offset(glm::vec3( 6.0f, 0.0f, 0.0f));
     te5.reflect = false;
+    te5.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te5);
 
     Plane te6(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
     te6.offset(glm::vec3( -6.0f, -0.0f, 0.0f));
     te6.reflect = false;
+    te6.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te6);   
 
 
