@@ -851,28 +851,6 @@ void TBOlight_prepare(std::vector<float>& tbo, int id,
 }
 
 
-void TBO_test(std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
-                    std::vector<glm::ivec3>& tria){
-    vertex.push_back(glm::vec3(-10, -10, -3));
-    vertex.push_back(glm::vec3(-10, 10, -3));
-    vertex.push_back(glm::vec3(10, -10, -3));
-    normal.push_back(glm::vec3(0, 0, 1));
-    normal.push_back(glm::vec3(0, 0, 1));    
-    normal.push_back(glm::vec3(0, 0, 1));
-    tria.push_back(glm::vec3(vertex.size()-3,vertex.size()-2,vertex.size()-1));
-    //
-    vertex.push_back(glm::vec3(10, -10, -3));
-    vertex.push_back(glm::vec3(-10, 10, -3));
-    vertex.push_back(glm::vec3(10, 10, -3));
-    normal.push_back(glm::vec3(0, 0, 1));
-    normal.push_back(glm::vec3(0, 0, 1));    
-    normal.push_back(glm::vec3(0, 0, 1));
-    tria.push_back(glm::vec3(vertex.size()-3,vertex.size()-2,vertex.size()-1));
-    //
-}
-
-
-
 
 int main(void)
 {

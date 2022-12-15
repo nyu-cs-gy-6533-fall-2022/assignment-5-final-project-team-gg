@@ -253,7 +253,7 @@ vec3 ray_tracing(){
             }
         }
         if(!inter.is_intersecting){
-            inter.color = vec3(1,0,0);
+            inter.color = vec3(1,1,1);
             break;
         }
         inter_buffer[i] = inter;
