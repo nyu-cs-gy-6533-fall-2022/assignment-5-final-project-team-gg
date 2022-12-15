@@ -957,7 +957,7 @@ int main(void)
     // objs.push_back(&ta);
 
     Torus tb(0.5f, 0.2f, 30, 30);
-    tb.maxIndex = torus(0.5f, 0.2f, 10, 10, tb.vertices, tb.normals, tb.indices, tb.texCoords);
+    tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
     tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
     objs.push_back(&tb);
 
@@ -968,16 +968,11 @@ int main(void)
     // tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
     // objs.push_back(&tc);
 
-<<<<<<< Updated upstream
+
     // TruncatedCone td(0.2f, 0.4f, 30, 1);
     // td.maxIndex = truncatedCone(0.2f, 0.4f, 30, 1, td.vertices, td.normals, td.indices, td.texCoords);
-    // objs.push_back(&td);
+    // objs.push_back(&td); 
 
-    Plane te(glm::vec3(-3.0f, 0.0f, -3.0f), glm::vec3(3.0f, 0.0f, -3.0f));
-    //te.offset(glm::vec3( - 1.0f, 0.0f, 0.0f));
-    te.reflect = false;
-    objs.push_back(&te);    
-=======
     TruncatedCone td(0.2f, 0.4f, 30, 1);
     td.maxIndex = truncatedCone(0.5f, 0.8f, 30, 0.5, td.vertices, td.normals, td.indices, td.texCoords);
     td.offset(glm::vec3(1.0, -1.0, 0.0));
@@ -991,36 +986,34 @@ int main(void)
     objs.push_back(&tf);
 
     Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
-    te.offset(glm::vec3( 0.0f, 7.0f, 0.0f));
+    te.offset(glm::vec3( 0.0f, 5.0f, 0.0f));
     te.reflect = false;
     objs.push_back(&te);    
 
     Plane te2(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
-    te2.offset(glm::vec3( 0.0f, -7.0f, 0.0f));
+    te2.offset(glm::vec3( 0.0f, -5.0f, 0.0f));
     te2.reflect = false;
     objs.push_back(&te2);
 
     Plane te3(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
-    te3.offset(glm::vec3( 0.0f, 0.0f, -7.0f));
-    te3.reflect = false;
+    te3.offset(glm::vec3( 0.0f, 0.0f, -6.0f));
+    te3.reflect = true;
     objs.push_back(&te3);
 
-    //back
     Plane te4(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
-    te4.offset(glm::vec3( 0.0f, 0.0f, 7.0f));
-    te4.reflect = true;  
+    te4.offset(glm::vec3( 0.0f, .0f, 6.0f));
+    te4.reflect = false;  
     objs.push_back(&te4);
 
     Plane te5(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
-    te5.offset(glm::vec3( 7.0f, 0.0f, 0.0f));
+    te5.offset(glm::vec3( 5.0f, 0.0f, 0.0f));
     te5.reflect = false;
     objs.push_back(&te5);
 
     Plane te6(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
-    te6.offset(glm::vec3( -7.0f, -0.0f, 0.0f));
+    te6.offset(glm::vec3( -5.0f, -0.0f, 0.0f));
     te6.reflect = false;
     objs.push_back(&te6);   
->>>>>>> Stashed changes
 
 
     int indicesMax = 0;
@@ -1036,12 +1029,11 @@ int main(void)
         TBO_prepare(tbo, V, VN, i->indices, i->color, i->reflect, i->light);
     }
 
+
     ///////////////////////////////////////////light///////////////////////////////////////////////
-<<<<<<< Updated upstream
+
     PointLight pa(glm::vec3(-1.0f, 2.0f, -3.0f));
-=======
-    PointLight pa(glm::vec3(-3.0f, 2.0f, -3.0f));
->>>>>>> Stashed changes
+
     ligs.push_back(&pa);
     PointLight pb(glm::vec3(1.0f, 2.0f, 3.0f));
     ligs.push_back(&pb);
