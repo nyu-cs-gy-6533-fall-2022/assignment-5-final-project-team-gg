@@ -16,7 +16,7 @@ uniform vec3 lightPos;
 uniform vec3 lightParams;
 uniform vec3 camPos;
 
-float epsilon = 0.000001;
+float epsilon = 0.0001;
 
 struct Ray{
     vec3 ray_origin;
@@ -38,9 +38,9 @@ struct Triangle{
     vec3 v1;
     vec3 v2;
     vec3 v3; // vectices of the triangle
-    vec3 n1;
-    vec3 n2;
-    vec3 n3; // normals of the triangle
+    //vec3 n1;
+    //vec3 n2;
+    //vec3 n3; // normals of the triangle
     vec3 color;
     bool is_reflecting;
     bool is_light;
@@ -52,9 +52,9 @@ Triangle get_triangle(int i){
     triangle.v1 = texelFetch(tria, 8 * i).rgb;
     triangle.v2 = texelFetch(tria, 8 * i + 1).rgb;
     triangle.v3 = texelFetch(tria, 8 * i + 2).rgb;
-    triangle.n1 = texelFetch(tria, 8 * i + 3).rgb;
-    triangle.n2 = texelFetch(tria, 8 * i + 4).rgb;
-    triangle.n3 = texelFetch(tria, 8 * i + 5).rgb;
+    //triangle.n1 = texelFetch(tria, 8 * i + 3).rgb;
+    //triangle.n2 = texelFetch(tria, 8 * i + 4).rgb;
+    //triangle.n3 = texelFetch(tria, 8 * i + 5).rgb;
     triangle.color = texelFetch(tria, 8 * i + 6).rgb;
     vec3 temp = texelFetch(tria,8 * i + 7).rgb;
     triangle.is_reflecting = temp.r >= 1;
@@ -102,11 +102,11 @@ Intersection intersect(Ray ray, Triangle triangle){
     inter.triangle_id = -1;
     vec3 n = normalize(cross(triangle.v1 - triangle.v2, triangle.v2 - triangle.v3));
     float perpen = dot(ray.ray_dir, n);
-    if(perpen == 0) 
+    if(perpen > -epsilon && perpen < epsilon) // perpen == 0
         return inter;
     float t = dot((triangle.v1 - ray.ray_origin), n) / perpen;
 
-    if(t < 0)
+    if(t < epsilon) // t < 0
         return inter;
 
     vec3 intersection_point = ray.ray_origin + ray.ray_dir * t;
@@ -124,8 +124,8 @@ Intersection intersect(Ray ray, Triangle triangle){
     float u = (dot_11 * dot_02 - dot_01 * dot_12) * inverse_denom;
     float v = (dot_00 * dot_12 - dot_01 * dot_02) * inverse_denom;
 
-    if ((u >= 0) && (v >= 0) && (u + v < 1)){
-        if(perpen>0)   
+    if ((u >= 0) && (v >= 0) && (u + v < 1 + epsilon)){ // u + v < 1
+        if(perpen > 0)   
             inter.normal = -n;
         else
             inter.normal = n;
