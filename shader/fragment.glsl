@@ -143,14 +143,7 @@ Intersection intersect(Ray ray, Triangle triangle){
 }
 
 
-vec3 Phong(vec3 color, vec3 normal, vec3 light_pos, vec3 pos, vec3 cam_pos, vec3 light_para){
-    normal = normalize(normal);
-    vec3 light_dir = normalize(light_pos - pos);
-    return clamp( color * light_para.x + 
-            color * max(0.0, dot(normal, light_dir)) + 
-            vec3(1.0) * pow(max(0.0, dot( normalize(cam_pos - pos), normalize( reflect(-light_dir, normal)))), light_para.y),
-            0.0, 1.0);
-}
+
 
 vec3 Phong2(vec3 color, vec3 normal, vec3 position, vec3 cam_pos, Light l){
     normal = normalize(normal);
@@ -165,50 +158,8 @@ vec3 Phong2(vec3 color, vec3 normal, vec3 position, vec3 cam_pos, Light l){
             0.0, 1.0);
 }
 
-vec3 Phong1(vec3 color, vec3 normal, vec3 pos, vec3 cam_pos){
-    normal = normalize(normal);
-    vec3 light_dir;
-    vec3 cam_dir = normalize(cam_pos - pos);
-    vec3 ref;
-    vec3 ambientColor;
-    vec3 totalDiffuse = vec3(0.0, 0.0, 0.0);
-    vec3 totalSpecular = vec3(0.0, 0.0, 0.0);
-    float nl;
-    
-    for (int i = 0; i < tbo_size2; i++){
-        Light l = get_light(i);
-        switch(int(l.id)){
-            case 0: // direction
-                break;
-            case 1: // point
-                light_dir = normalize(l.p1 - pos);
-                ref = normalize(reflect(-light_dir, normal));
-                nl = clamp(dot(light_dir, normal), 0.0f, 1.0f);
-                ambientColor = (l.Ia * color);
-                totalDiffuse += (l.Ii * nl);
-                totalSpecular += (l.Ii * vec3(1.0) * pow( max(0.0, dot( cam_dir, ref)), 50.0) );
-                break;
-
-        }
-    
-    }
-    return clamp(ambientColor + totalDiffuse * color + totalSpecular, 0.0, 1.0);
-}
 
 
-//bool shadow(Intersection inter){
-//    vec3 position = inter.position;
-//    int id = inter.triangle_id;
-//    Ray ray = Ray(position, normalize(lightPos - pos));
-//    for(int j = 0; j < tbo_size; ++j){
-//        // generate the triangle
-//        Triangle triangle = get_triangle(j);
-//        Intersection temp_inter = intersect(ray, triangle);
-//        if(temp_inter.is_intersecting && temp_inter.d > 0 && temp_inter.d < length(lightPos - position) && id != triangle.id)
-//            return true;
-//    }
-//    return false;
-//}
 
 vec3 shadow2(Intersection inter, Light l){
     vec3 position = inter.position;
@@ -232,35 +183,8 @@ vec3 shadow2(Intersection inter, Light l){
 }
 
 
-//int shadow1(Intersection inter){
-//    int count = 0;
-//    vec3 position = inter.position;
-//    int id = inter.triangle_id;
-//
-//    Intersection temp_inter;
-//    Ray ray;
-//    for(int j = 0; j < tbo_size; ++j){
-//        Triangle triangle = get_triangle(j);
-//        for(int i = 0; i < tbo_size2; ++i){
-//            Light l = get_light(i);
-//            switch(int(l.id)){
-//                case 0:
-//                    break;
-//                case 1:
-//                    ray = Ray(position, normalize(l.p1 - position));
-//                    temp_inter = intersect(ray, triangle);
-//                    if(temp_inter.is_intersecting && id != triangle.id)
-//                        count++;
-//                    break;
-//            }
-//        }
-//
-//    }
-//    return count;
-//}
 
 vec3 ray_tracing(){
-    Light l = get_light(0);
     int depth = 10;
     vec3 currentColor, result = vec3(0.0);
     vec3 pos_temp = camPos;
@@ -289,12 +213,6 @@ vec3 ray_tracing(){
         inter_buffer[i] = inter;
         current_id = inter.triangle_id;
         if(!inter.is_reflecting){
-            // if(shadow(inter.position, lightPos, inter.triangle_id)){
-            //     return clamp(inter.color * lightParams.x, 0.0, 1.0);
-            // }
-            // else{
-            //     return Phong(inter.color, inter.normal, lightPos, inter.position, camPos, lightParams);
-            // }
             break;
         }
         else{
@@ -305,6 +223,10 @@ vec3 ray_tracing(){
     }
     currentColor = inter_buffer[current_depth].color;
     for(int k = current_depth; k >=0; --k){
+        if(inter_buffer[k].is_reflecting){
+            result -= vec3(0.03,0.03,0.03);
+            continue;
+        }
         for(int i = 0; i < tbo_size2; i++){
             Light l = get_light(i);
             switch(int(l.id)){
@@ -323,14 +245,6 @@ vec3 ray_tracing(){
             }
             result += currentColor;
         }
-//        int divider = shadow2(inter_buffer[k]);
-//        if(divider > 0){
-//            result = clamp(result * lightParams.x / divider, 0.0, 1.0);
-//        }
-//        else{
-//            result = Phong1(result, inter_buffer[k].normal, inter_buffer[k].position, camPos);
-//            //result =  Phong(result, inter_buffer[k].normal, l.p1, inter_buffer[k].position, camPos, lightParams);
-//        }
     }
     return clamp(result, 0.0, 1.0);
 }
@@ -338,7 +252,5 @@ vec3 ray_tracing(){
 void main()
 {
     vec3 col = ray_tracing();
-//    Light l = get_light(0);
-//    vec3 col = vec3(l.Ia, 0.0, 0.0);
     outColor = vec4(col, 1.0);
 }
