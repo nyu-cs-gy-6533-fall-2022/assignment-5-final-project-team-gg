@@ -216,8 +216,11 @@ int shadow2(Intersection inter){
                     ray = Ray(position, normalize(l.p1 - position));
                     temp_inter = intersect(ray, triangle);
                     if(temp_inter.is_intersecting && id != triangle.id && temp_inter.d > 0 
-                        && temp_inter.d < length(l.p1 - position))
+                        && temp_inter.d < length(l.p1 - position)){
                         count++;
+                    }else{
+                        //return 0;
+                    }
                     break;
             }
         }

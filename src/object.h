@@ -8,7 +8,7 @@
 
 class Object{
 public:
-	Object(glm::vec3 coords = glm::vec3(0.0, 0.0, 0.0), glm::vec3 col = glm::vec3(1.0, 1.0, 0.0), unsigned int maxI = 0,
+	Object(glm::vec3 coords = glm::vec3(0.0, 0.0, 0.0), glm::vec3 col = glm::vec3(0.0, 0.0, 0.5), unsigned int maxI = 0,
 		bool reflecting = false, bool refracting = false, bool lighting = false,
 		float ambientFactor = 0.2f, float specExponent = 50.0f) {
 
