@@ -980,7 +980,31 @@ vec3 ray_tracing(){
 ## TASK 5: Spatial Data Structure(20%)-Nick
 
 
-## TASK 6: Screen-space Methods (12 %)-Patrick
+## Task 6: Screen-space Methods (12 %)-Patrick
+*Please see the "sc" branch of the repo for code for this task.
 
+### Vignette
+![vignette](sc/vig.png)
+
+### Luminance
+![luminance](sc/lum.png)
+
+### Brightness
+![brightness](sc/brt.png)
+
+### Contrast
+![contrast](sc/con.png)
+
+### Exposure
+![exposure](sc/exp.png)
+
+### Gamma
+![gamma](sc/gam.png)
+
+### Negative
+![negative](sc/neg.png)
+
+### Saturation
+![saturation](sc/sat.png)
 
 ## Task 7: Particle System (20 %)-Patrick
