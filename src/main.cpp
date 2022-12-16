@@ -953,22 +953,22 @@ int main(void)
     // tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
     // objs.push_back(&tc);
 
-    // TruncatedCone td(0.2f, 0.4f, 30, 1);
-    // td.maxIndex = truncatedCone(0.5f, 0.8f, 30, 0.5, td.vertices, td.normals, td.indices, td.texCoords);
-    // td.offset(glm::vec3(1.0, -1.0, 0.0));
-    // td.color = glm::vec3(0.0, 1.0, 0.0);
-    // objs.push_back(&td);
+    TruncatedCone td(0.2f, 0.4f, 30, 1);
+    td.maxIndex = truncatedCone(0.5f, 0.8f, 30, 0.5, td.vertices, td.normals, td.indices, td.texCoords);
+    td.offset(glm::vec3(1.0, -1.0, 0.0));
+    td.color = glm::vec3(0.0, 1.0, 0.0);
+    objs.push_back(&td);
 
-    // Capsule tf(0.2, 0.8, 20, 20);
-    // tf.maxIndex = capsule(0.2, 0.2, 20, 20, 0.8, tf.vertices, tf.normals, tf.indices, tf.texCoords);
-    // tf.offset(glm::vec3(-1.0, 1.0, 0.0));
-    // tf.color = glm::vec3(1.0, 0.5, 0.0);
-    // objs.push_back(&tf);
+    Capsule tf(0.2, 0.8, 20, 20);
+    tf.maxIndex = capsule(0.2, 0.2, 20, 20, 0.8, tf.vertices, tf.normals, tf.indices, tf.texCoords);
+    tf.offset(glm::vec3(-1.0, 1.0, 0.0));
+    tf.color = glm::vec3(1.0, 0.5, 0.0);
+    objs.push_back(&tf);
 
-    // Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
-    // te.offset(glm::vec3( 0.0f, 10.0f, 0.0f));
-    // te.reflect = true;
-    // objs.push_back(&te);    
+    Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
+    te.offset(glm::vec3( 0.0f, 10.0f, 0.0f));
+    te.reflect = true;
+    objs.push_back(&te);    
 
     // Plane te2(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
     // te2.offset(glm::vec3( 0.0f, -10.0f, 0.0f));
@@ -985,15 +985,15 @@ int main(void)
     te4.reflect = false;  
     objs.push_back(&te4);
 
-    // Plane te5(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
-    // te5.offset(glm::vec3( 10.0f, 0.0f, 0.0f));
-    // te5.reflect = false;
-    // objs.push_back(&te5);
+    Plane te5(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
+    te5.offset(glm::vec3( 10.0f, 0.0f, 0.0f));
+    te5.reflect = false;
+    objs.push_back(&te5);
 
-    // Plane te6(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
-    // te6.offset(glm::vec3( -10.0f, -0.0f, 0.0f));
-    // te6.reflect = false;
-    // objs.push_back(&te6);   
+    Plane te6(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
+    te6.offset(glm::vec3( -10.0f, -0.0f, 0.0f));
+    te6.reflect = false;
+    objs.push_back(&te6);   
 
     std::vector<Triangle> triangles;
     int indicesMax = 0;
