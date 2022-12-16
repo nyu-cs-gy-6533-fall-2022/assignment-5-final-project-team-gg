@@ -581,7 +581,7 @@ unsigned int capsule(float topRadius, float baseRadius, int sectorCount, int sta
 
                     // calculate texture coordinate
                     textureCoordinate.x = float(j) / sectorCount;
-                    textureCoordinate.y = float(i) * (topRadius / height) / stackCount;
+                    textureCoordinate.y = float(i) * (topRadius / height) / (stackCount/2);
                     textCoords.push_back(textureCoordinate);
                 }
             }
@@ -635,7 +635,7 @@ unsigned int capsule(float topRadius, float baseRadius, int sectorCount, int sta
 
                     // calculate texture coordinate
                     textureCoordinate.x = float(j) / sectorCount;
-                    textureCoordinate.y = (float(i) * ((baseRadius) / height)/ stackCount) + ((height - baseRadius) / height);
+                    textureCoordinate.y = (float(i - (stackCount / 2)) * (baseRadius / height) / (stackCount / 2)) + ((height - baseRadius) / height);
                     textCoords.push_back(textureCoordinate);
                 }
             }
