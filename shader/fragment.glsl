@@ -47,6 +47,11 @@ struct Triangle{
     int id;
 };
 
+struct BVH{
+    vec3 minv;
+    vec3 maxv;
+};
+
 Triangle get_triangle(int i){
     Triangle triangle;
     triangle.v1 = texelFetch(tria, 8 * i).rgb;

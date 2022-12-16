@@ -787,7 +787,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void TBO_prepare(std::vector<float>& tbo, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
                     std::vector<glm::ivec3>& tria, glm::vec3 col, bool is_reflecing, bool is_light){
-    std::cout<<tria.size()<<std::endl;
+    //std::cout<<tria.size()<<std::endl;
     for(int i = 0; i < tria.size(); ++i){
         // positions
         tbo.push_back(vertex[tria[i].x].x);
@@ -830,7 +830,7 @@ void TBOlight_prepare(std::vector<float>& tbo, int id,
     glm::vec3 direction,
     float Ia, float Ii) {
 
-    std::cout << Ia << Ii << std::endl;
+    //std::cout << Ia << Ii << std::endl;
     tbo.push_back((float)id);
     tbo.push_back(Ia);
     tbo.push_back(Ii);
@@ -849,7 +849,13 @@ void TBOlight_prepare(std::vector<float>& tbo, int id,
 
 }
 
-
+void generate_triangles(std::vector<Triangle>& triangles, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
+                                        std::vector<glm::ivec3>& tria, glm::vec3 col, bool is_reflecing){
+    for(int i = 0; i < tria.size(); ++i){
+        Triangle t(vertex[tria[i].x], vertex[tria[i].y], vertex[tria[i].z], col, is_reflecing);
+        triangles.push_back(t);
+    }
+}
 
 int main(void)
 {
@@ -989,7 +995,7 @@ int main(void)
     // te6.reflect = false;
     // objs.push_back(&te6);   
 
-
+    std::vector<Triangle> triangles;
     int indicesMax = 0;
     V.resize(0); VN.resize(0); T.resize(0);
     for (Object* i : objs) {
@@ -1000,6 +1006,7 @@ int main(void)
         T.insert(T.end(), i->indices.begin(), i->indices.end());
         TC.insert(TC.end(), i->texCoords.begin(), i->texCoords.end());
         TBO_prepare(tbo, V, VN, i->indices, i->color, i->reflect, i->light);
+        generate_triangles(triangles, V, VN, i->indices, i->color, i->reflect);
     }
 
     ///////////////////////////////////////////light///////////////////////////////////////////////
@@ -1131,6 +1138,8 @@ int main(void)
     cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
     cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
 
+    
+
     // TBO
     // tbo: pos1, pos2, pos3, nor1, nor2, nor3, col, (is_reflecting, is_lighting, 0);
     // for test
@@ -1138,41 +1147,67 @@ int main(void)
     GLuint TBO;
     glGenBuffers(1, &TBO);
     glBindBuffer(GL_TEXTURE_BUFFER, TBO);
-    
-    //TBO_prepare(tbo, V, VN, T, glm::vec3(1,1,0));
-
-
     glBufferData(GL_TEXTURE_BUFFER, tbo.size()*sizeof(float), &tbo[0], GL_STATIC_DRAW);
     
-
     glGenTextures(1, &TBO_tex);
     glBindBuffer(GL_TEXTURE_BUFFER, 0);
-
 
     glUniform1i(glGetUniformLocation(program.program_shader, "tria"), 0);
     glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size"), T.size());
 
-    //
+    // tbo for light
     // tbo2: id, pos1, pos2, pos3, pos4, dir
     // for test
     unsigned int TBO_tex2;
     GLuint TBO2;
     glGenBuffers(1, &TBO2);
     glBindBuffer(GL_TEXTURE_BUFFER, TBO2);
-
     glBufferData(GL_TEXTURE_BUFFER, tbo2.size() * sizeof(float), &tbo2[0], GL_STATIC_DRAW);
-
 
     glGenTextures(1, &TBO_tex2);
     glBindBuffer(GL_TEXTURE_BUFFER, 1);
 
-
     glUniform1i(glGetUniformLocation(program.program_shader, "tria2"), 1);
     glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size2"), ligs.size());
 
+    // tbo for bvh
+    // tbo3 for bvh tree
+
+    float* _bvh = NULL;
+    float* _tria = NULL;
+    int bvh_size;
+    int tria_size;
+    bvh* root = create_bvh(triangles, 0, triangles.size(), 0);
+    generate_bvh_tbo(root, _bvh, _tria, bvh_size, tria_size);
+
+    unsigned int TBO_tex_bvh;
+    GLuint TBO3;
+    glGenBuffers(1, &TBO3);
+    glBindBuffer(GL_TEXTURE_BUFFER, TBO3);
+    glBufferData(GL_TEXTURE_BUFFER, bvh_size * sizeof(float), _bvh, GL_STATIC_DRAW);
+    
+    glGenTextures(1, &TBO_tex_bvh);
+    glBindBuffer(GL_TEXTURE_BUFFER, 2);
+
+    glUniform1i(glGetUniformLocation(program.program_shader, "bvh"), 2);
+    glUniform1i(glGetUniformLocation(program.program_shader, "bvh_size"), bvh_size);
+
+    // tbo4 for tria list of the bvh tree
+    unsigned int TBO_tex_tria;
+    GLuint TBO4;
+    glGenBuffers(1, &TBO4);
+    glBindBuffer(GL_TEXTURE_BUFFER, TBO4);
+    glBufferData(GL_TEXTURE_BUFFER, tria_size*sizeof(float), _tria, GL_STATIC_DRAW);
+    
+    glGenTextures(1, &TBO_tex_tria);
+    glBindBuffer(GL_TEXTURE_BUFFER, 3);
+
+    glUniform1i(glGetUniformLocation(program.program_shader, "tria_bvh"), 3);
+    glUniform1i(glGetUniformLocation(program.program_shader, "tria_size"), tria_size);
+
 
     //
-    std::cout<<tbo.size()<<std::endl;
+    std::cout<<"num of vertices = "<<tbo.size()<<std::endl;
 
     program.bindVertexAttribArray("position", VBO);
     program.bindVertexAttribArray("normal", NBO);
@@ -1208,6 +1243,15 @@ int main(void)
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_BUFFER, TBO_tex2);
         glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO2);
+
+        // bvh
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_BUFFER, TBO_tex_bvh);
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO3);
+
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_BUFFER, TBO_tex_tria);
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO4);
 
         // bind your element array
         IndexBuffer.bind();
