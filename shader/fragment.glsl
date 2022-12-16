@@ -5,9 +5,11 @@ out vec4 outColor;
 in vec3 n;
 in vec3 color;
 in vec3 pos;
+in vec2 TexCoords;
 
 uniform samplerBuffer tria;
 uniform samplerBuffer tria2;
+uniform sampler2D tex;
 uniform int tbo_size;
 uniform int tbo_size2;
 
@@ -15,6 +17,7 @@ uniform int tbo_size2;
 //uniform vec3 lightPos;
 //uniform vec3 lightParams;
 uniform vec3 camPos;
+
 
 float epsilon = 0.000001;
 
@@ -55,7 +58,8 @@ Triangle get_triangle(int i){
     triangle.n1 = texelFetch(tria, 8 * i + 3).rgb;
     triangle.n2 = texelFetch(tria, 8 * i + 4).rgb;
     triangle.n3 = texelFetch(tria, 8 * i + 5).rgb;
-    triangle.color = texelFetch(tria, 8 * i + 6).rgb;
+    //triangle.color = texelFetch(tria, 8 * i + 6).rgb;
+    triangle.color = vec3(texture(tex, TexCoords));
     vec3 temp = texelFetch(tria,8 * i + 7).rgb;
     triangle.is_reflecting = temp.r >= 1;
     triangle.is_light = temp.g >= 1;

@@ -38,6 +38,8 @@ BufferObject NBO;
 // VertexBufferObject wrapper
 BufferObject IndexBuffer;
 
+BufferObject UTBO;
+
 // Contains the vertex positions
 std::vector<glm::vec3> V;
 // Contains the vertex normal
@@ -49,6 +51,7 @@ std::vector<glm::vec2> TC;
 // data for tbo
 std::vector<float> tbo;
 std::vector<float> tbo2;
+std::vector<float> tbo3;
 // Last position of the mouse on click
 double xpos, ypos;
 
@@ -846,8 +849,15 @@ void TBOlight_prepare(std::vector<float>& tbo, int id,
     tbo.push_back(direction.y);
     tbo.push_back(direction.z);
 
+}
 
+void TBOtex_prepare(std::vector<float>& tbo, std::vector<glm::vec2> tc){
 
+    for (glm::vec2& i : tc) {
+        tbo.push_back(i.x);
+        tbo.push_back(i.y);
+        tbo.push_back(0.0);
+    }
 }
 
 
@@ -941,6 +951,10 @@ int main(void)
     NBO.init();
     // initialize element array buffer
     IndexBuffer.init(GL_ELEMENT_ARRAY_BUFFER);
+
+    UTBO.init();
+
+
     // initialize model matrix
     glm::mat4 modelMatrix = glm::mat4(1.0f);
 
@@ -1029,6 +1043,7 @@ int main(void)
         TC.insert(TC.end(), i->texCoords.begin(), i->texCoords.end());
         TBO_prepare(tbo, V, VN, i->indices, i->color, i->reflect, i->light);
     }
+    TBOtex_prepare(tbo3, TC);
 
 
     ///////////////////////////////////////////light///////////////////////////////////////////////
@@ -1057,6 +1072,7 @@ int main(void)
     VBO.update(V);
     NBO.update(VN);
     IndexBuffer.update(T);
+    UTBO.update(TC);
 
     // load PPM image file
     ImageRGB image;
@@ -1189,11 +1205,29 @@ int main(void)
     glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size2"), ligs.size());
 
 
+    // utbo
+    unsigned int ut;
+    glGenTextures(1, &ut);
+    glBindBuffer(GL_TEXTURE_2D, 2);
+    glBindTexture(GL_TEXTURE_2D, ut);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.w, image.h, 0, GL_RGB, GL_UNSIGNED_BYTE, &image.data[0]);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glUniform1i(program.uniform("tex"), 2);
+
     //
     std::cout<<tbo.size()<<std::endl;
 
     program.bindVertexAttribArray("position", VBO);
     program.bindVertexAttribArray("normal", NBO);
+    program.bindVertexAttribArray("texCoords", UTBO);
+
+
+
 
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
@@ -1226,6 +1260,10 @@ int main(void)
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_BUFFER, TBO_tex2);
         glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO2);
+
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, ut);
+
 
         // bind your element array
         IndexBuffer.bind();
@@ -1267,6 +1305,7 @@ int main(void)
     program.free();
     VAO.free();
     VBO.free();
+    UTBO.free();
 
     // Deallocate glfw internals
     glfwTerminate();
