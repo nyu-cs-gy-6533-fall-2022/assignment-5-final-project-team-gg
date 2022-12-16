@@ -355,7 +355,7 @@ vec3 ray_tracing(){
     int current_id = -1;
     for(int i = 0; i < depth; ++i){
         Ray ray = Ray(pos_temp, dir_temp, -dir_temp);
-        Intersection inter = bvh_inter(ray, current_id);
+        Intersection inter = non_bvh_inter(ray, current_id); // non_bvh_inter <-> bvh_inter
         if(!inter.is_intersecting){
             inter.color = vec3(1,1,1);
             break;
