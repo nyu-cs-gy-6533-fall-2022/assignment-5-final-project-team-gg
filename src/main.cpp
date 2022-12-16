@@ -990,28 +990,27 @@ int main(void)
 
     TruncatedCone td(0.2f, 0.4f, 30, 1);
     td.maxIndex = truncatedCone(0.5f, 0.8f, 30, 0.5, td.vertices, td.normals, td.indices, td.texCoords);
-    td.offset(glm::vec3(1.0, -1.0, 0.0));
+    //td.offset(glm::vec3(1.0, -1.0, 0.0));
     td.color = glm::vec3(0.0, 1.0, 0.0);
-    objs.push_back(&td);
+    //objs.push_back(&td);
 
     Capsule tf(0.2, 0.8, 20, 20);
     tf.maxIndex = capsule(0.2, 0.2, 30, 30, 0.8, tf.vertices, tf.normals, tf.indices, tf.texCoords);
     tf.offset(glm::vec3(-1.0, 0.0, 0.0));
     tf.color = glm::vec3(1.0, 0.5, 0.0);
-    objs.push_back(&tf);
+    //objs.push_back(&tf);
 
     Cone tg(0.2, 0.4, 30);
     tg.maxIndex = cone(0.2, 30, 0.4, tg.vertices, tg.normals, tg.indices, tg.texCoords);
     tg.color = glm::vec3(0.0, 0.5, 0.9);
-    objs.push_back(&tg);
+    //objs.push_back(&tg);
 
 
     Cylinder th(0.2, 0.3, 30);
     th.maxIndex = cylinder(0.2, 30, 0.3, th.vertices, th.normals, th.indices, th.texCoords);
     th.color = glm::vec3(0.1, 0.1, 0.1);
-
     th.offset(glm::vec3(0.0, 0.0, 1.0));
-    objs.push_back(&th);
+    //objs.push_back(&th);
 
     Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
     te.offset(glm::vec3( 0.0f, 6.0f, 0.0f));
@@ -1027,7 +1026,7 @@ int main(void)
 
     Plane te3(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
     te3.offset(glm::vec3( 0.0f, 0.0f, -6.0f));
-    te3.reflect = true;
+    te3.reflect = false;
     te3.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te3);
 
@@ -1069,19 +1068,19 @@ int main(void)
     std::vector<Light*> ligs;
 
     PointLight la(glm::vec3(-2.0f, 4.0f, -2.0f));
-    ligs.push_back(&la);
+    //ligs.push_back(&la);
 
     PointLight lb(glm::vec3(2.0f, 4.0f, 2.0f));
     //ligs.push_back(&lb);
 
-    SpotLight lc(glm::vec3(1.0, 1.0, 1.0), glm::vec3(-1.0,-1.0,-1.0), 40);
+    SpotLight lc(glm::vec3(1.0, 4.0, 1.0), glm::vec3(-1.0,-2.0,-1.0), 40);
     //ligs.push_back(&lc);
 
     DirectionalLight ld(glm::vec3(0.1, -1.0, 0.1));
     //ligs.push_back(&ld);
 
     Arealight le(glm::vec3(-1.2, 3, -1.3), glm::vec3(-1.4, 3.3, 1), glm::vec3(0.2, 3.2, 0.4));
-    //ligs.push_back(&le);
+    ligs.push_back(&le);
 
     for (Light* i : ligs) {
         TBOlight_prepare(tbo2, i->identifier, i->vertices, i->direction, i->I_a, i->I_i);

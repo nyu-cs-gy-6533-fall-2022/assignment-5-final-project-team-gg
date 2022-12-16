@@ -187,7 +187,7 @@ vec3 Phong3(vec3 color, vec3 normal, vec3 position, vec3 cam_pos, Light l){
         case 3: // Area light
             Intersection temp_inter1, temp_inter2;
             int flag;
-            Ray ray = Ray(position, normalize(-l.dir));
+            Ray ray = Ray(position, normalize(l.dir));
             Triangle t1 = Triangle(l.p1, l.p2, l.p3, l.dir, l.dir, l.dir, vec3(0.0), false, false, 0);
             Triangle t2 = Triangle(l.p3, l.p4, l.p1, l.dir, l.dir, l.dir, vec3(0.0), false, false, 0);
             temp_inter1 = intersect(ray, t1);
@@ -262,8 +262,8 @@ vec3 shadow2(Intersection inter, Light l){
             Intersection temp_inter1, temp_inter2;
             int flag = 0;
             ray = Ray(position, normalize(l.dir));
-            Triangle t1 = Triangle(l.p1, l.p2, l.p3, l.dir, l.dir, l.dir, vec3(0.0), false, false, 0);
-            Triangle t2 = Triangle(l.p3, l.p4, l.p1, l.dir, l.dir, l.dir, vec3(0.0), false, false, 0);
+            Triangle t1 = Triangle(l.p1, l.p2, l.p3, -l.dir, -l.dir, -l.dir, vec3(0.0), false, false, 0);
+            Triangle t2 = Triangle(l.p3, l.p4, l.p1, -l.dir, -l.dir, -l.dir, vec3(0.0), false, false, 0);
             temp_inter1 = intersect(ray, t1);
             temp_inter2 = intersect(ray, t2);
             flag = ( temp_inter1.is_intersecting || temp_inter2.is_intersecting ) ? 1 : 0;
