@@ -367,7 +367,9 @@ unsigned int truncatedCone(float topRadius, float baseRadius, int sectorCount, f
     }
     return maxElementIndice + 1;
 }
+
 ```
+![truncatedcone](object/truncatedcone.png)![truncatedcone_tex](object/truncatedcone_tex.png)
 ### Cone
 ```cpp
 unsigned int cone(float radius, int sectorCount, float height,
@@ -376,7 +378,7 @@ unsigned int cone(float radius, int sectorCount, float height,
     return truncatedCone(0.0f, radius, sectorCount, height, vertices, normals, indices, textCoords);
 }
 ```
-
+![cone](object/cone.png)![cone_tex](object/cone_tex.png)
 ### Cylinder
 ```cpp
 unsigned int cylinder(float radius, int sectorCount, float height,
@@ -385,7 +387,7 @@ unsigned int cylinder(float radius, int sectorCount, float height,
     return truncatedCone(radius, radius, sectorCount, height, vertices, normals, indices, textCoords);
 }
 ```
-
+![cylinder](object/cylinder.png)![cylinder_tex](object/cylinder_tex.png)
 ### Capsule
 ```cpp
 unsigned int capsule(float topRadius, float baseRadius, int sectorCount, int stackCount, float height,
@@ -528,7 +530,7 @@ unsigned int capsule(float topRadius, float baseRadius, int sectorCount, int sta
     return maxElementIndice + 1;
 }
 ```
-
+![capsule](object/capsule.png)![capsule_tex](object/capsule_tex.png)
 ### Torus
 ```cpp
 unsigned int torus(float outerRadius, float innerRadius, int sectorCount, int stackCount,
@@ -595,7 +597,9 @@ unsigned int torus(float outerRadius, float innerRadius, int sectorCount, int st
 
 }
 ```
+![torus](object/torus.png)![torus_tex](object/torus_tex.png)
 ### RESULT
+![all](object/all.png)
 
 ## TASK 3: Lights(16%)-Charles
 
