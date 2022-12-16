@@ -993,7 +993,7 @@ vec3 ray_tracing(){
 ![brightness](sc/brt.png)
 
 ### Contrast
-![contrast](sc/con.png)
+![contrast](sc/ctr.png)
 
 ### Exposure
 ![exposure](sc/exp.png)
