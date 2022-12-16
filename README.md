@@ -741,6 +741,29 @@ Light get_light(int i){
 ![Spot](light/Spot.png)
 ### Area light
 ![Area](light/area.png)
+### Multiple light(phong & shader)
+```cpp
+    currentColor = inter_buffer[current_depth].color;
+    for(int k = current_depth; k >=0; --k){
+        if(inter_buffer[k].is_reflecting){
+            result -= vec3(0.03,0.03,0.03);
+            continue;
+        }
+        for(int i = 0; i < tbo_size2; i++){
+            Light l = get_light(i);
+            vec3 temp;
+            temp = shadow2(inter_buffer[k], l);
+            if(  temp != vec3(-1.0) ){
+                currentColor = temp;
+            }else{
+                currentColor = Phong3(inter_buffer[k].color, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
+            }
+            result += currentColor;
+        }
+    }
+    return clamp(result, 0.0, 1.0);
+```
+![multiple](light/mulitple)
 
 ## TASK 4: Ray Tracing(16%)-Nick
 
