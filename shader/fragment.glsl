@@ -163,8 +163,7 @@ bool r_p(Ray r, BVH b) {
     dirfrac.x = 1.0f / r.ray_dir.x;
     dirfrac.y = 1.0f / r.ray_dir.y;
     dirfrac.z = 1.0f / r.ray_dir.z;
-    // lb is the corner of AABB with minimal coordinates - left bottom, rt is maximal corner
-    // r.org is origin of ray
+    
     float t1 = (b.minv.x - r.ray_origin.x)*dirfrac.x;
     float t2 = (b.maxv.x - r.ray_origin.x)*dirfrac.x;
     float t3 = (b.minv.y - r.ray_origin.y)*dirfrac.y;
@@ -176,14 +175,14 @@ bool r_p(Ray r, BVH b) {
     float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
 
     float t;
-    // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+   
     if (tmax < epsilon)
     {
         t = tmax;
         return false;
     }
 
-    // if tmin > tmax, ray doesn't intersect AABB
+
     if (tmin > tmax)
     {
         t = tmax;
@@ -194,23 +193,23 @@ bool r_p(Ray r, BVH b) {
     return true;
 }
 
-bool intersect_plane(Ray ray,BVH _bvh){
-    vec3 minn = (_bvh.minv - ray.ray_origin) * (- ray.ray_dir);
-    vec3 maxx = (_bvh.maxv - ray.ray_origin) * (- ray.ray_dir);
+// bool intersect_plane(Ray ray,BVH _bvh){
+//     vec3 minn = (_bvh.minv - ray.ray_origin) * (- ray.ray_dir);
+//     vec3 maxx = (_bvh.maxv - ray.ray_origin) * (- ray.ray_dir);
 
-    vec3 t1 = vec3( sign(ray.ray_dir).x >= 0 ? minn.x : maxx.x,
-                    sign(ray.ray_dir).y >= 0 ? minn.y : maxx.y,
-                    sign(ray.ray_dir).z >= 0 ? minn.z : maxx.z);
-    vec3 t2 = vec3( sign(ray.ray_dir).x >= 0 ? maxx.x : minn.x,
-                    sign(ray.ray_dir).y >= 0 ? maxx.y : minn.y,
-                    sign(ray.ray_dir).z >= 0 ? maxx.z : minn.z);
-    float max_t1 = max(t1.x, max(t1.y, t1.z));
-    float min_t2 = min(t2.x, min(t2.y, t2.z));
-    if(min_t2 >= max_t1 && min_t2 >= 0){
-        return true;
-    }
-    return false;
-}
+//     vec3 t1 = vec3( sign(ray.ray_dir).x >= 0 ? minn.x : maxx.x,
+//                     sign(ray.ray_dir).y >= 0 ? minn.y : maxx.y,
+//                     sign(ray.ray_dir).z >= 0 ? minn.z : maxx.z);
+//     vec3 t2 = vec3( sign(ray.ray_dir).x >= 0 ? maxx.x : minn.x,
+//                     sign(ray.ray_dir).y >= 0 ? maxx.y : minn.y,
+//                     sign(ray.ray_dir).z >= 0 ? maxx.z : minn.z);
+//     float max_t1 = max(t1.x, max(t1.y, t1.z));
+//     float min_t2 = min(t2.x, min(t2.y, t2.z));
+//     if(min_t2 >= max_t1 && min_t2 >= 0){
+//         return true;
+//     }
+//     return false;
+// }
 
 vec3 Phong(vec3 color, vec3 normal, vec3 light_pos, vec3 pos, vec3 cam_pos, vec3 light_para){
     normal = normalize(normal);
