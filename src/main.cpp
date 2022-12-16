@@ -1068,10 +1068,10 @@ int main(void)
     std::vector<Light*> ligs;
 
     PointLight la(glm::vec3(-2.0f, 4.0f, -2.0f));
-    //ligs.push_back(&la);
+    ligs.push_back(&la);
 
     PointLight lb(glm::vec3(2.0f, 4.0f, 2.0f));
-    //ligs.push_back(&lb);
+    ligs.push_back(&lb);
 
     SpotLight lc(glm::vec3(1.0, 4.0, 1.0), glm::vec3(-1.0,-2.0,-1.0), 40);
     //ligs.push_back(&lc);
