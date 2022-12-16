@@ -1,10 +1,8 @@
 // This example is heavily based on the tutorial at https://open.gl
-#include <algorithm>
+
 // OpenGL Helpers to reduce the clutter
-#include "Helpers.h"
-#include "object.h"
-#include "light.h"
-#include "BVH.h"
+//#include "Helpers.h"
+#include "Particle.h"
 
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
@@ -38,16 +36,27 @@ BufferObject NBO;
 BufferObject IndexBuffer;
 
 // Contains the vertex positions
-std::vector<glm::vec3> V;
-// Contains the vertex normal
-std::vector<glm::vec3> VN;
-// Contains the vertex index
-std::vector<glm::ivec3> T;
-//
-std::vector<glm::vec2> TC;
-// data for tbo
-std::vector<float> tbo;
-std::vector<float> tbo2;
+std::vector<glm::vec3> V(3);
+// Contains the vertex positions
+std::vector<glm::vec3> VN(3);
+// Contains the vertex positions
+std::vector<glm::ivec3> T(3);
+
+// texcoord
+BufferObject TBO;
+std::vector<glm::vec2> TX(3);
+
+// quad
+BufferObject quadVBO;
+BufferObject quadTBO;
+
+std::vector<glm::vec2> quadV(3);
+std::vector<glm::vec2> quadTX(3);
+
+// Window Dim
+int winWidth = 800;
+int winHeight = 600;
+
 // Last position of the mouse on click
 double xpos, ypos;
 
@@ -61,13 +70,17 @@ glm::mat4 viewMatrix;
 glm::mat4 projMatrix;
 
 float camRadius = 5.0f;
-bool firstMouse = true;
-float yaw = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
-float pitch = 0.0f;
-float lastX = 800.0f / 2.0;
-float lastY = 600.0 / 2.0;
-//0: static, 1: cursor
-bool mode = 0;
+
+int TASK = 4;
+
+bool vignette   = false; // 1
+bool luminance  = false; // 2
+bool brightness = false; // 3
+bool contrast   = false; // 4
+bool exposure   = false; // 5
+bool gamma      = false; // 6
+bool negative   = false; // 7
+bool saturation = false; // 8
 
 // PPM Reader code from http://josiahmanson.com/prose/optimize_ppm/
 
@@ -165,7 +178,7 @@ bool loadPPM(ImageRGB& img, const std::string& name) {
     return true;
 }
 
-bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vector<glm::ivec3>& indices, glm::vec3& min, glm::vec3& max)
+bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vector<glm::ivec3>& tria, glm::vec3& min, glm::vec3& max)
 {
     min.x = FLT_MAX;
     max.x = FLT_MIN;
@@ -240,18 +253,15 @@ bool loadOFFFile(std::string filename, std::vector<glm::vec3>& vertex, std::vect
     return true;
 }
 
-unsigned int sphere(float sphereRadius, int sectorCount, int stackCount,
-    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
-    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
+void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, std::vector<glm::ivec3>& tria, std::vector<glm::vec2>& texcoords) {
     // init variables
-    vertices.resize(0);
-    normals.resize(0);
-    indices.resize(0);
-    textCoords.resize(0);
+    vertex.resize(0);
+    normal.resize(0);
+    tria.resize(0);
+    texcoords.resize(0);
     // temp variables
     glm::vec3 sphereVertexPos;
-    glm::vec2 textureCoordinate;
-    float xy;
+    float xz;
     float sectorStep = 2.0f * M_PI / float(sectorCount);
     float stackStep = M_PI / stackCount;
     float sectorAngle, stackAngle;
@@ -259,30 +269,29 @@ unsigned int sphere(float sphereRadius, int sectorCount, int stackCount,
     // compute vertices and normals
     for (int i = 0; i <= stackCount; ++i) {
         stackAngle = M_PI / 2.0f - i * stackStep;
-        xy = sphereRadius * cosf(stackAngle);
-        sphereVertexPos.z = sphereRadius * sinf(stackAngle);
+        xz = sphereRadius * cosf(stackAngle);
+        sphereVertexPos.y = sphereRadius * sinf(stackAngle);
 
         for (int j = 0; j <= sectorCount; ++j) {
             sectorAngle = j * sectorStep;
 
             // vertex position
-            sphereVertexPos.x = xy * sinf(sectorAngle);
-            sphereVertexPos.y = xy * cosf(sectorAngle);
-            vertices.push_back(sphereVertexPos);
+            sphereVertexPos.x = xz * cosf(sectorAngle);
+            sphereVertexPos.z = xz * sinf(sectorAngle);
+            vertex.push_back(sphereVertexPos);
 
             // normalized vertex normal
-            normals.push_back(sphereVertexPos / sphereRadius);
+            normal.push_back(sphereVertexPos / sphereRadius);
 
-            // calculate texture coordinate
-            textureCoordinate.x = float(j) / sectorCount;
-            textureCoordinate.y = float(i) / stackCount;
-            textCoords.push_back(textureCoordinate);
+            // texcoords
+            float u = -(sectorAngle+M_PI)/(2*M_PI);
+            float v = -(stackAngle+M_PI_2)/M_PI;
+            texcoords.push_back(glm::vec2(u, v));
         }
     }
 
     // compute triangle indices
-    unsigned int k1, k2;
-    unsigned int maxElementIndice = 0;
+    int k1, k2;
     for (int i = 0; i < stackCount; ++i) {
         k1 = i * (sectorCount + 1);
         k2 = k1 + sectorCount + 1;
@@ -291,378 +300,15 @@ unsigned int sphere(float sphereRadius, int sectorCount, int stackCount,
             // 2 triangles per sector excluding first and last stacks
             // k1 => k2 => k1+1
             if (i != 0) {
-                indices.push_back(glm::ivec3(k1, k2, k1 + 1));
+                T.push_back(glm::ivec3(k1, k2, k1 + 1));
             }
             // k1+1 => k2 => k2+1
             if (i != (stackCount - 1)) {
-                indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+                T.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
             }
-            maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
         }
     }
-    return maxElementIndice + 1;
-
 }
-
-
-unsigned int torus(float outerRadius, float innerRadius, int sectorCount, int stackCount,
-    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
-    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
-    // init variables
-    vertices.resize(0);
-    normals.resize(0);
-    indices.resize(0);
-    textCoords.resize(0);
-    // temp variables
-    glm::vec3 torusVertexPos;
-    glm::vec2 textureCoordinate;
-
-    float sectorStep = 2.0f * M_PI / float(sectorCount);
-    float stackStep = 2.0f * M_PI / float(stackCount);
-    float sectorAngle, stackAngle;
-
-    // compute vertices and normals
-    for (int i = 0; i <= stackCount; ++i) {
-        stackAngle = M_PI / 2.0f - i * stackStep;
-        torusVertexPos.y = innerRadius * sinf(stackAngle);
-
-        for (int j = 0; j <= sectorCount; ++j) {
-            sectorAngle = j * sectorStep;
-
-            // vertex position
-            torusVertexPos.x = sinf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
-            torusVertexPos.z = cosf(sectorAngle) * (innerRadius * cosf(stackAngle) + outerRadius);
-            vertices.push_back(torusVertexPos);
-
-            // normalized vertex normal
-            normals.push_back(glm::normalize(torusVertexPos - glm::vec3(outerRadius * sinf(sectorAngle), 0.0f, outerRadius * cosf(sectorAngle))));
-
-            // calculate texture coordinate
-            textureCoordinate.x = float(j) / sectorCount;
-            textureCoordinate.y = float(i) / stackCount;
-            textCoords.push_back(textureCoordinate);
-        }
-    }
-
-    // compute triangle indices
-    unsigned int k1, k2;
-    unsigned int maxElementIndice = 0;
-    for (int i = 0; i < stackCount; ++i) {
-        k1 = i * (sectorCount + 1);
-        k2 = k1 + sectorCount + 1;
-
-        for (int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
-            // 2 triangles per sector excluding first and last stacks
-            // k1 => k2 => k1+1
-
-            indices.push_back(glm::ivec3(k1, k2, k1 + 1));
-
-            // k1+1 => k2 => k2+1
-
-            indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
-
-            maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
-
-        }
-    }
-    return maxElementIndice + 1;
-
-}
-
-unsigned int truncatedCone(float topRadius, float baseRadius, int sectorCount, float height,
-    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
-    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
-    //
-    float sectorStep = 2.0f * M_PI / float(sectorCount);
-    float sectorAngle;
-    std::vector<float> unitCircleVertices;
-    glm::vec3 cylinderVertexPos;
-    glm::vec2 textureCoordinate;
-    float coneAngle = atanf((baseRadius - topRadius) / height);
-    unsigned int maxElementIndice = 0;
-
-    // init variables
-    vertices.resize(0);
-    normals.resize(0);
-    indices.resize(0);
-    textCoords.resize(0);
-
-    // get unit circle vectors on XY-plane
-    for (int i = 0; i <= sectorCount; ++i){
-        sectorAngle = i * sectorStep;
-        unitCircleVertices.push_back(sin(sectorAngle)); // x
-        unitCircleVertices.push_back(0); // y
-        unitCircleVertices.push_back(cos(sectorAngle));                // z
-    }
-
-    // put side vertices to arrays
-    for (int i = 0; i < 2; ++i)
-    {
-        float h = -height / 2.0f + i * height;           // z value; -h/2 to h/2
-        float t = 1.0f - i;                              // vertical tex coord; 1 to 0
-
-        for (int j = 0, k = 0; j <= sectorCount; ++j, k += 3)
-        {
-            sectorAngle = j * sectorStep;
-
-            float ux = unitCircleVertices[k];
-            float uy = unitCircleVertices[k + 1];
-            float uz = unitCircleVertices[k + 2];
-            // position vector
-            float sphereRadius = (i == 0) ? baseRadius : topRadius;
-            cylinderVertexPos.x = ux * sphereRadius;
-            cylinderVertexPos.y = h;
-            cylinderVertexPos.z = uz * sphereRadius;
-            vertices.push_back(cylinderVertexPos);
-
-            // normal vector
-            normals.push_back(glm::normalize(glm::vec3(
-                cosf(coneAngle) * sinf(sectorAngle),
-                sinf(coneAngle),
-                cosf(coneAngle) * cosf(sectorAngle)
-            )));
-
-            // calculate texture coordinate
-            textureCoordinate.x = (float)j / sectorCount;
-            textureCoordinate.y = t;
-            textCoords.push_back(textureCoordinate);
-        }
-    }
-
-    int baseCenterIndex = (int)vertices.size();
-    int topCenterIndex = baseCenterIndex + sectorCount + 1; // include center vertex
-
-    // put base and top vertices to arrays
-    for (int i = 0; i < 2; ++i)
-    {
-        float h = -height / 2.0f + i * height;           // z value; -h/2 to h/2
-        float ny = -1 + i * 2;                           // z value of normal; -1 to 1
-
-        // center point
-        vertices.push_back(glm::vec3(0.0f, h, 0.0f));
-        normals.push_back(glm::vec3(0.0f, ny, 0.0f));
-        textCoords.push_back(glm::vec2(0.5f, 0.5f));
-
-        for (int j = 0, k = 0; j < sectorCount; ++j, k += 3)
-        {
-            float ux = unitCircleVertices[k];
-            float uz = unitCircleVertices[k + 2];
-            // position vector
-            float sphereRadius = (i == 0) ? baseRadius : topRadius;
-            cylinderVertexPos.x = ux * sphereRadius;
-            cylinderVertexPos.y = h;
-            cylinderVertexPos.z = uz * sphereRadius;
-            vertices.push_back(cylinderVertexPos);
-
-            // normal vector
-            normals.push_back(glm::vec3(0.0f, ny, 0.0f));
-
-            // texture coordinate
-            textureCoordinate.x = -ux * 0.5f + 0.5f;
-            textureCoordinate.y = -uz * 0.5f + 0.5f;
-            textCoords.push_back(textureCoordinate);
-
-        }
-    }
-
-    unsigned int k1 = 0;                         // 1st vertex index at base
-    unsigned int k2 = sectorCount + 1;           // 1st vertex index at top
-
-    // indices for the side surface
-    for (int i = 0; i < sectorCount; ++i, ++k1, ++k2)
-    {
-        // 2 triangles per sector
-        // k1 => k1+1 => k2
-        indices.push_back(glm::ivec3(k1, k2, k1 + 1));
-
-
-        // k2 => k1+1 => k2+1
-        indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
-        maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
-    }
-
-    for (unsigned int i = 0, k = baseCenterIndex + 1; i < sectorCount; ++i, ++k)
-    {
-        if (i < sectorCount - 1)
-        {
-            indices.push_back(glm::ivec3(baseCenterIndex, k + 1, k));
-        }
-        else // last triangle
-        {
-            indices.push_back(glm::ivec3(baseCenterIndex, baseCenterIndex + 1, k));
-        }
-        maxElementIndice = std::max(maxElementIndice, k);
-    }
-
-    // indices for the top surface
-    if (topRadius != 0) {
-        for (unsigned int i = 0, k = topCenterIndex + 1; i < sectorCount; ++i, ++k)
-        {
-            if (i < sectorCount - 1)
-            {
-                indices.push_back(glm::ivec3(topCenterIndex, k, k + 1));
-            }
-            else // last triangle
-            {
-                indices.push_back(glm::ivec3(topCenterIndex, k, topCenterIndex + 1));
-            }
-            maxElementIndice = std::max(maxElementIndice, k);
-        }
-    }
-    return maxElementIndice + 1;
-}
-
-unsigned int cone(float radius, int sectorCount, float height,
-    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
-    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
-    return truncatedCone(0.0f, radius, sectorCount, height, vertices, normals, indices, textCoords);
-}
-
-unsigned int cylinder(float radius, int sectorCount, float height,
-    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
-    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
-    return truncatedCone(radius, radius, sectorCount, height, vertices, normals, indices, textCoords);
-}
-unsigned int capsule(float topRadius, float baseRadius, int sectorCount, int stackCount, float height,
-    std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals,
-    std::vector<glm::ivec3>& indices, std::vector<glm::vec2>& textCoords) {
-    //
-    float xy;
-    float sectorStep = 2.0f * M_PI / float(sectorCount);
-    float stackStep = M_PI / float(stackCount);
-    float sectorAngle, stackAngle;
-    std::vector<float> unitCircleVertices;
-    glm::vec3 capsuleVertexPos;
-    glm::vec2 textureCoordinate;
-
-    float cylinderHeight = height - topRadius - baseRadius;
-    glm::vec3 topCenter(0.0f, cylinderHeight / 2.0f, 0.0f);
-    glm::vec3 baseCenter(0.0f, -cylinderHeight / 2.0f, 0.0f);
-
-    float coneAngle = atanf((baseRadius - topRadius) / cylinderHeight);
-
-    // init variables
-    vertices.resize(0);
-    normals.resize(0);
-    indices.resize(0);
-    textCoords.resize(0);
-
-    // get unit circle vectors on XZ-plane
-    for (int i = 0; i <= sectorCount; ++i) {
-        sectorAngle = i * sectorStep;
-        unitCircleVertices.push_back(sinf(sectorAngle));                 // x
-        unitCircleVertices.push_back(0);                                // y
-        unitCircleVertices.push_back(cosf(sectorAngle));                 // z
-    }
-
-
-    // vertex, normal, texture coordinate
-    for (int x = 0; x < 3; ++x) {
-        switch (x) {
-        case 0:     // top semisphere
-            for (int i = 0; i <= (stackCount / 2); ++i) {
-                stackAngle = M_PI / 2.0f - i * stackStep;
-                xy = topRadius * cosf(stackAngle);
-                capsuleVertexPos.y = topRadius * sinf(stackAngle) + (cylinderHeight / 2);
-                for (int j = 0; j <= sectorCount; ++j) {
-                    sectorAngle = j * sectorStep;
-
-                    // vertex position
-                    capsuleVertexPos.x = xy * sinf(sectorAngle);
-                    capsuleVertexPos.z = xy * cosf(sectorAngle);
-                    vertices.push_back(capsuleVertexPos);
-
-                    // normalized vertex normal
-                    normals.push_back(glm::normalize(capsuleVertexPos - topCenter));
-
-                    // calculate texture coordinate
-                    textureCoordinate.x = float(j) / sectorCount;
-                    textureCoordinate.y = float(i) * (topRadius / height) / stackCount;
-                    textCoords.push_back(textureCoordinate);
-                }
-            }
-            break;
-        case 1:     // cylinder
-            for (int i = 1; i >= 0; --i) {
-                float h = -cylinderHeight / 2.0f + i * cylinderHeight;           // z value; h/2 to -h/2
-                float t = 1.0f - i;                              // vertical tex coord; 1 to 0
-                for (int j = 0, k = 0; j <= sectorCount; ++j, k += 3) {
-                    sectorAngle = j * sectorStep;
-
-                    float ux = unitCircleVertices[k];
-                    float uy = unitCircleVertices[k + 1];
-                    float uz = unitCircleVertices[k + 2];
-                    // position vector
-                    float capsuleRadius = (i == 0) ? baseRadius : topRadius;
-                    capsuleVertexPos.x = ux * capsuleRadius;
-                    capsuleVertexPos.y = h;
-                    capsuleVertexPos.z = uz * capsuleRadius;
-                    vertices.push_back(capsuleVertexPos);
-
-                    // normal vector
-                    normals.push_back(glm::normalize(glm::vec3(
-                        cosf(coneAngle) * sinf(sectorAngle),
-                        sinf(coneAngle),
-                        cosf(coneAngle) * cosf(sectorAngle)
-                    )));
-
-                    // calculate texture coordinate
-                    textureCoordinate.x = (float)j / sectorCount;
-                    textureCoordinate.y = (i == 1) ? (topRadius / height) : ((height - baseRadius) / height);
-                    textCoords.push_back(textureCoordinate);
-                }
-            }
-            break;
-        case 2:     // bottom semisphere
-            for (int i = (stackCount / 2); i <= stackCount; ++i) {
-                stackAngle = M_PI / 2.0f - i * stackStep;
-                xy = baseRadius * cosf(stackAngle);
-                capsuleVertexPos.y = (baseRadius * sinf(stackAngle)) - (cylinderHeight / 2);
-                for (int j = 0; j <= sectorCount; ++j) {
-                    sectorAngle = j * sectorStep;
-
-                    // vertex position
-                    capsuleVertexPos.x = xy * sinf(sectorAngle);
-                    capsuleVertexPos.z = xy * cosf(sectorAngle);
-                    vertices.push_back(capsuleVertexPos);
-
-                    // normalized vertex normal
-                    normals.push_back(glm::normalize(capsuleVertexPos - baseCenter));
-
-                    // calculate texture coordinate
-                    textureCoordinate.x = float(j) / sectorCount;
-                    textureCoordinate.y = (float(i) * ((baseRadius) / height)/ stackCount) + ((height - baseRadius) / height);
-                    textCoords.push_back(textureCoordinate);
-                }
-            }
-            break;
-        }
-    }
-
-    // indices
-        // compute triangle indices
-    unsigned int k1, k2;
-    unsigned int maxElementIndice;
-    for (int i = 0; i < (stackCount + 3); ++i) {
-        k1 = i * (sectorCount + 1);
-        k2 = k1 + sectorCount + 1;
-
-        for (int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
-            // 2 triangles per sector excluding first and last stacks
-            // k1 => k2 => k1+1
-            if (i != 0) {
-                indices.push_back(glm::ivec3(k1, k2, k1 + 1));
-            }
-            // k1+1 => k2 => k2+1
-            if (i != (stackCount + 2)) {
-                indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
-            }
-            maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
-        }
-    }
-    return maxElementIndice + 1;
-}
-
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -671,7 +317,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
-
     // Get the size of the window
     int width, height;
     glfwGetWindowSize(window, &width, &height);
@@ -683,51 +328,10 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         std::cout << xpos << " " << ypos << std::endl;
     }
 
-    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        mode = (mode == 0) ? 1 : 0;
-    }
-}
-
-static void cursor_position_callback(GLFWwindow* window, double xposIn, double yposIn)
-{
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.5f; // change this value to your liking
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    // make sure that when pitch is out of bounds, screen doesn't get flipped
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    glm::vec3 front;
-    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front.y = sin(glm::radians(pitch));
-    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraDirection = glm::normalize(front);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    float watchDistance = 5.0f;
     // temp variables
     glm::mat3 rot;
     // Update the position of the first vertex if the keys 1,2, or 3 are pressed
@@ -758,16 +362,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         cameraUp = glm::normalize(glm::cross(cameraDirection, cameraRight));
         break;
     case GLFW_KEY_UP:
-        cameraPos += cameraDirection * 0.25f;
-        break;
-    case GLFW_KEY_DOWN:
         cameraPos -= cameraDirection * 0.25f;
         break;
-    case GLFW_KEY_LEFT:
-        cameraPos -= glm::normalize(glm::cross(cameraDirection, cameraUp)) * 0.25f;
-        break;
-    case GLFW_KEY_RIGHT:
-        cameraPos += glm::normalize(glm::cross(cameraDirection, cameraUp)) * 0.25f;
+    case GLFW_KEY_DOWN:
+        cameraPos += cameraDirection * 0.25f;
         break;
     case GLFW_KEY_R:
         cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
@@ -775,6 +373,32 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         cameraDirection = glm::normalize(cameraPos - cameraTarget);
         cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
+        break;
+    case GLFW_KEY_1:
+        if (action == GLFW_PRESS) { vignette = !vignette; }
+        break;
+    case GLFW_KEY_2:
+        if (action == GLFW_PRESS) { luminance = !luminance; }
+        break;
+    case GLFW_KEY_3:
+        if (action == GLFW_PRESS) { brightness = !brightness; }
+        break;
+    case GLFW_KEY_4:
+        if (action == GLFW_PRESS) { contrast = !contrast; }
+        break;
+    case GLFW_KEY_5:
+        if (action == GLFW_PRESS) { exposure = !exposure; }
+        break;
+    case GLFW_KEY_6:
+        if (action == GLFW_PRESS) { gamma = !gamma; }
+        break;
+    case GLFW_KEY_7:
+        if (action == GLFW_PRESS) { negative = !negative; }
+        break;
+    case GLFW_KEY_8:
+        if (action == GLFW_PRESS) { saturation = !saturation; }
+        break;
+    case GLFW_KEY_9:
         break;
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
@@ -785,84 +409,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 }
 
-void TBO_prepare(std::vector<float>& tbo, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
-                    std::vector<glm::ivec3>& tria, glm::vec3 col, bool is_reflecing, bool is_light){
-    //std::cout<<tria.size()<<std::endl;
-    for(int i = 0; i < tria.size(); ++i){
-        // positions
-        tbo.push_back(vertex[tria[i].x].x);
-        tbo.push_back(vertex[tria[i].x].y);
-        tbo.push_back(vertex[tria[i].x].z);
-        tbo.push_back(vertex[tria[i].y].x);
-        tbo.push_back(vertex[tria[i].y].y);
-        tbo.push_back(vertex[tria[i].y].z);
-        tbo.push_back(vertex[tria[i].z].x);
-        tbo.push_back(vertex[tria[i].z].y);
-        tbo.push_back(vertex[tria[i].z].z);
-        // normal
-        tbo.push_back(normal[tria[i].x].x);
-        tbo.push_back(normal[tria[i].x].y);
-        tbo.push_back(normal[tria[i].x].z);
-        tbo.push_back(normal[tria[i].y].x);
-        tbo.push_back(normal[tria[i].y].y);
-        tbo.push_back(normal[tria[i].y].z);
-        tbo.push_back(normal[tria[i].z].x);
-        tbo.push_back(normal[tria[i].z].y);
-        tbo.push_back(normal[tria[i].z].z);
-        // color
-        tbo.push_back(col.x);
-        tbo.push_back(col.y);
-        tbo.push_back(col.z);
-        // is_reflecing
-        if(is_reflecing) tbo.push_back(5);
-        else tbo.push_back(0);
-        // is_light
-        if(is_light) tbo.push_back(5);
-        else tbo.push_back(0);
-        tbo.push_back(0);
-        
-    }
-}
-
-
-void TBOlight_prepare(std::vector<float>& tbo, int id, 
-    std::vector<glm::vec3>& vertex,
-    glm::vec3 direction,
-    float Ia, float Ii) {
-
-    //std::cout << Ia << Ii << std::endl;
-    tbo.push_back((float)id);
-    tbo.push_back(Ia);
-    tbo.push_back(Ii);
-    for (int i = 0; i < 4; ++i) {
-        // positions
-        tbo.push_back(vertex[i].x);
-        tbo.push_back(vertex[i].y);
-        tbo.push_back(vertex[i].z);
-    }
-
-    tbo.push_back(direction.x);
-    tbo.push_back(direction.y);
-    tbo.push_back(direction.z);
-
-
-
-}
-
-void generate_triangles(std::vector<Triangle>& triangles, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
-                                        std::vector<glm::ivec3>& tria, glm::vec3 col, bool is_reflecing){
-    for(int i = 0; i < tria.size(); ++i){
-        Triangle t(vertex[tria[i].x], vertex[tria[i].y], vertex[tria[i].z], col, is_reflecing);
-        triangles.push_back(t);
-    }
-}
-
 int main(void)
 {
     GLFWwindow* window;
 
     // Initialize the library
-    if (!glfwInit())   
+    if (!glfwInit())
         return -1;
 
     // Activate supersampling
@@ -924,134 +476,59 @@ int main(void)
     NBO.init();
     // initialize element array buffer
     IndexBuffer.init(GL_ELEMENT_ARRAY_BUFFER);
+    // initialize texcoor array buffer
+    TBO.init();
+
+    // QUAD
+    VertexArrayObject quadVAO;
+    quadVAO.init();
+    quadVAO.bind();
+
+    quadVBO.init();
+    quadTBO.init();
+
+    quadV.resize(0);
+    quadTX.resize(0);
+
+    quadV = {
+        glm::vec2(-1.0f, -1.0f),
+        glm::vec2( 1.0f, -1.0f),
+        glm::vec2(-1.0f,  1.0f),
+        glm::vec2(-1.0f,  1.0f),
+        glm::vec2( 1.0f, -1.0f),
+        glm::vec2( 1.0f,  1.0f)
+    };
+    quadTX = {
+        glm::vec2(0.0f, 0.0f),
+        glm::vec2(1.0f, 0.0f),
+        glm::vec2(0.0f, 1.0f),
+        glm::vec2(0.0f, 1.0f),
+        glm::vec2(1.0f, 0.0f),
+        glm::vec2(1.0f, 1.0f)
+    };
+
+    quadVBO.update(quadV);
+    quadTBO.update(quadTX);
+
     // initialize model matrix
     glm::mat4 modelMatrix = glm::mat4(1.0f);
 
+    ImageRGB image;
+    bool imageAvailable;
+
     // 1: generate sphere, 0: load OFF model
-#if 1
-    //////////////////////////////object//////////////////////////////////////////
-    std::vector<Object*> objs;
-    std::vector<Light*> ligs;
-
-    
-    // Torus ta(1.0f, 0.5f, 5, 5);
-    // ta.maxIndex = torus(1.0f, 0.5f, 5, 5, ta.vertices, ta.normals, ta.indices, ta.texCoords);
-    // ta.offset(glm::vec3(0.0f, -2.0f, 0.0));
-    // objs.push_back(&ta);
-
-    Torus tb(0.5f, 0.2f, 30, 30);
-    tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
-    tb.color = glm::vec3(1.0, 0.0, 0.0);
-    tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
-
-    objs.push_back(&tb);
-
-
-    // Sphere tc(0.2f, 30, 30);
-    // tc.maxIndex = sphere(0.2f, 30, 30, tc.vertices, tc.normals, tc.indices, tc.texCoords);
-    // std::cout << tc.maxIndex << " " << tc.vertices.size() << " " << tc.indices.size();
-    // tc.offset(glm::vec3(0.0f, -0.5f, 0.0));
-    // objs.push_back(&tc);
-
-    TruncatedCone td(0.2f, 0.4f, 30, 1);
-    td.maxIndex = truncatedCone(0.5f, 0.8f, 30, 0.5, td.vertices, td.normals, td.indices, td.texCoords);
-    td.offset(glm::vec3(1.0, -1.0, 0.0));
-    td.color = glm::vec3(0.0, 1.0, 0.0);
-    objs.push_back(&td);
-
-    Capsule tf(0.2, 0.8, 20, 20);
-    tf.maxIndex = capsule(0.2, 0.2, 20, 20, 0.8, tf.vertices, tf.normals, tf.indices, tf.texCoords);
-    tf.offset(glm::vec3(-1.0, 1.0, 0.0));
-    tf.color = glm::vec3(1.0, 0.5, 0.0);
-    objs.push_back(&tf);
-
-    Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
-    te.offset(glm::vec3( 0.0f, 10.0f, 0.0f));
-    te.reflect = true;
-    objs.push_back(&te);    
-
-    // Plane te2(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
-    // te2.offset(glm::vec3( 0.0f, -10.0f, 0.0f));
-    // te2.reflect = false;
-    // objs.push_back(&te2);
-
-    // Plane te3(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
-    // te3.offset(glm::vec3( 0.0f, 0.0f, -10.0f));
-    // te3.reflect = false;
-    // objs.push_back(&te3);
-
-    // Plane te4(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
-    // te4.offset(glm::vec3( 0.0f, .0f, 10.0f));
-    // te4.reflect = false;  
-    // objs.push_back(&te4);
-
-    // Plane te5(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
-    // te5.offset(glm::vec3( 10.0f, 0.0f, 0.0f));
-    // te5.reflect = false;
-    // objs.push_back(&te5);
-
-    // Plane te6(glm::vec3(0.0f, 10.0f, 10.0f), glm::vec3(0.0f, 10.0f, -10.0f));
-    // te6.offset(glm::vec3( -10.0f, -0.0f, 0.0f));
-    // te6.reflect = false;
-    // objs.push_back(&te6);   
-
-    std::vector<Triangle> triangles;
-    int indicesMax = 0;
-    V.resize(0); VN.resize(0); T.resize(0);
-    for (Object* i : objs) {
-        indicesMax = V.size();
-        V.insert(V.end(), i->vertices.begin(), i->vertices.end());
-        VN.insert(VN.end(), i->normals.begin(), i->normals.end());
-        i->adjustIndice(indicesMax);
-        T.insert(T.end(), i->indices.begin(), i->indices.end());
-        TC.insert(TC.end(), i->texCoords.begin(), i->texCoords.end());
-        TBO_prepare(tbo, V, VN, i->indices, i->color, i->reflect, i->light);
-        generate_triangles(triangles, V, VN, i->indices, i->color, i->reflect);
-    }
-
-    ///////////////////////////////////////////light///////////////////////////////////////////////
-    PointLight pa(glm::vec3(-3.0f, 3.0f, -3.0f));
-    ligs.push_back(&pa);
-    PointLight pb(glm::vec3(3.0f, 3.0f, 3.0f));
-    ligs.push_back(&pb);
-
-    for (Light* i : ligs) {
-        TBOlight_prepare(tbo2, i->identifier, i->vertices, i->direction, i->I_a, i->I_i);
-    }
-
-    int objNum = 6;
-    switch (objNum){
-    case 0:
-        sphere(1.0f, 30, 30, V, VN, T, TC);
-        break;
-    case 1:
-        cylinder(1.0f, 30, 3, V, VN, T, TC);
-        break;
-    case 2:
-        torus(1.0f, 0.5f, 30, 30, V, VN, T, TC);
-        break;
-    case 3:
-        cone(1.0f, 30, 3.0f, V, VN, T, TC);
-        break;
-    case 4:
-        capsule(0.3f, 0.3f, 30, 30, 2.0f, V, VN, T, TC);
-        break;
-    case 5:
-        truncatedCone(0.2f, 0.4f, 30, 1, V, VN, T, TC);
-        break;
-    default:
-        break;
-    }
-    
+if (TASK == 1 || TASK == 2 || TASK == 3) {
+    // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
+    VAO.bind();
+    sphere(1.0f, 20, 10, V, VN, T, TX);
     VBO.update(V);
     NBO.update(VN);
     IndexBuffer.update(T);
 
     // load PPM image file
-    ImageRGB image;
-    bool imageAvailable = loadPPM(image, "../data/land_shallow_topo_2048.ppm");
-
-#else
+    imageAvailable = loadPPM(image, "../data/land_shallow_topo_2048.ppm");
+}
+else {
     // load  OFF file
     glm::vec3 min, max, tmpVec;
     std::cout << "Loading OFF file...";
@@ -1094,7 +571,7 @@ int main(void)
     // initialize normal array buffer
     NBO.init();
     NBO.update(VN);
-#endif
+}
 
     // Initialize the OpenGL Program
     // A program controls the OpenGL pipeline and it must contains
@@ -1113,20 +590,133 @@ int main(void)
     // is the one that we want in the fragment buffer (and thus on screen)
     program.init(vertCode.str(), fragCode.str(), "outColor");
     program.bind();
-
+    
     // The vertex shader wants the position of the vertices as an input.
     // The following line connects the VBO we defined above with the position "slot"
     // in the vertex shader
+    program.bindVertexAttribArray("position", VBO);
+    program.bindVertexAttribArray("normal", NBO);
+    if (TASK == 1 || TASK == 2 || TASK == 3) {
+        program.bindVertexAttribArray("texcoord", TBO);
+    }
+
+    // GLOBE TEXTURE
+    GLuint globeTex;
+    if (TASK == 1 || TASK == 2 || TASK == 3) {
+        glGenTextures(1, &globeTex);
+        glBindTexture(GL_TEXTURE_2D, globeTex);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        if (imageAvailable) {
+            glActiveTexture(GL_TEXTURE0);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.w, image.h, 0, GL_RGB, GL_UNSIGNED_BYTE, image.data.data());
+            TBO.update(TX);
+        }
+        else {
+            std::cout << "Image failed to load" << std::endl;
+        }
+    }
+
+    Program programScreen;
+    GLuint fbo;
+    GLuint rbo;
+    // RENDER TO TEXTURE
+    GLuint renderedTex;
+    // DEFERRED SHADING
+    GLuint gPosition;
+    GLuint gNormal;
+    GLuint gColor;
+    GLuint gDepth;
+    if (TASK == 2 || TASK == 3 || TASK == 4) {
+        std::ifstream screenFragShader("../shader/screenFrag.glsl");
+        std::stringstream screenFragCode;
+        screenFragCode << screenFragShader.rdbuf();
+
+        std::ifstream screenVertShader("../shader/screenVert.glsl");
+        std::stringstream screenVertCode;
+        screenVertCode << screenVertShader.rdbuf();
+
+        programScreen.init(screenVertCode.str(), screenFragCode.str(), "screenColor");
+        programScreen.bind();
+
+        programScreen.bindVertexAttribArray("quadPos", quadVBO);
+        programScreen.bindVertexAttribArray("quadTexcoord", quadTBO);
+
+        // FrameBuffer
+        glGenFramebuffers(1, &fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+        if (TASK != 4) {
+            glGenRenderbuffers(1, &rbo);
+            glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 800, 600);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
+        }
+
+        // RENDER TO TEXTURE
+        glGenTextures(1, &renderedTex);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, renderedTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderedTex, 0);
+
+        // DEFERRED SHADING
+        glGenTextures(1, &gPosition);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, gPosition);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, winWidth, winHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gPosition, 0);
+
+        glGenTextures(1, &gNormal);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, gNormal);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, winWidth, winHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gNormal, 0);
+
+        glGenTextures(1, &gColor);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, gColor);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, winWidth, winHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gColor, 0);
+
+        // OUTLINE
+        glGenTextures(1, &gDepth);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, gDepth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, winWidth, winHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, gDepth, 0);
     
+        GLenum attachments[4] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+        glDrawBuffers(4, attachments);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            std::cout << "ERROR: Framebuffer not complete" << std::endl;
+            return false;
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
 
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
 
     // Register the mouse callback
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-    // Register the cursor move callback
-    glfwSetCursorPosCallback(window, cursor_position_callback);
 
     // Update viewport
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -1138,79 +728,11 @@ int main(void)
     cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
     cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
 
-    
+    ParticleGenerator* Particles;
+    Particles = new ParticleGenerator(program, 500);
 
-    // TBO
-    // tbo: pos1, pos2, pos3, nor1, nor2, nor3, col, (is_reflecting, is_lighting, 0);
-    // for test
-    unsigned int TBO_tex;
-    GLuint TBO;
-    glGenBuffers(1, &TBO);
-    glBindBuffer(GL_TEXTURE_BUFFER, TBO);
-    glBufferData(GL_TEXTURE_BUFFER, tbo.size()*sizeof(float), &tbo[0], GL_STATIC_DRAW);
-    
-    glGenTextures(1, &TBO_tex);
-    glBindBuffer(GL_TEXTURE_BUFFER, 0);
-
-    glUniform1i(glGetUniformLocation(program.program_shader, "tria"), 0);
-    glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size"), T.size());
-
-    // tbo for light
-    // tbo2: id, pos1, pos2, pos3, pos4, dir
-    // for test
-    unsigned int TBO_tex2;
-    GLuint TBO2;
-    glGenBuffers(1, &TBO2);
-    glBindBuffer(GL_TEXTURE_BUFFER, TBO2);
-    glBufferData(GL_TEXTURE_BUFFER, tbo2.size() * sizeof(float), &tbo2[0], GL_STATIC_DRAW);
-
-    glGenTextures(1, &TBO_tex2);
-    glBindBuffer(GL_TEXTURE_BUFFER, 1);
-
-    glUniform1i(glGetUniformLocation(program.program_shader, "tria2"), 1);
-    glUniform1i(glGetUniformLocation(program.program_shader, "tbo_size2"), ligs.size());
-
-    // tbo for bvh
-    // tbo3 for bvh tree
-
-    float* _bvh = NULL;
-    float* _tria = NULL;
-    int bvh_size;
-    int tria_size;
-    bvh* root = create_bvh(triangles, 0, triangles.size(), 0);
-    generate_bvh_tbo(root, _bvh, _tria, bvh_size, tria_size);
-
-    unsigned int TBO_tex_bvh;
-    GLuint TBO3;
-    glGenBuffers(1, &TBO3);
-    glBindBuffer(GL_TEXTURE_BUFFER, TBO3);
-    glBufferData(GL_TEXTURE_BUFFER, bvh_size * sizeof(float), _bvh, GL_STATIC_DRAW);
-    
-    glGenTextures(1, &TBO_tex_bvh);
-    glBindBuffer(GL_TEXTURE_BUFFER, 2);
-
-    glUniform1i(glGetUniformLocation(program.program_shader, "bvh"), 2);
-    glUniform1i(glGetUniformLocation(program.program_shader, "bvh_size"), bvh_size);
-
-    // tbo4 for tria list of the bvh tree
-    unsigned int TBO_tex_tria;
-    GLuint TBO4;
-    glGenBuffers(1, &TBO4);
-    glBindBuffer(GL_TEXTURE_BUFFER, TBO4);
-    glBufferData(GL_TEXTURE_BUFFER, tria_size*sizeof(float), _tria, GL_STATIC_DRAW);
-    
-    glGenTextures(1, &TBO_tex_tria);
-    glBindBuffer(GL_TEXTURE_BUFFER, 3);
-
-    glUniform1i(glGetUniformLocation(program.program_shader, "tria_bvh"), 3);
-    glUniform1i(glGetUniformLocation(program.program_shader, "tria_size"), tria_size);
-
-
-    //
-    std::cout<<"num of vertices = "<<tbo.size()<<std::endl;
-
-    program.bindVertexAttribArray("position", VBO);
-    program.bindVertexAttribArray("normal", NBO);
+    float last = 0.0f;
+    float dt = 0.0f;
 
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
@@ -1218,69 +740,143 @@ int main(void)
         // Get the size of the window
         int width, height;
         glfwGetWindowSize(window, &width, &height);
-
-        // matrix calculations
-        switch (mode)
-        {
-        case 0:
-            viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
-            break;
-        case 1:
-            viewMatrix = glm::lookAt(cameraPos, cameraPos + cameraDirection, cameraUp);
-            break;
-        default:
-            viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
-            break;
+        
+        // RENDER TO TEXTURE : FIRST PASS
+        if (TASK == 2 || TASK == 3 || TASK == 4) {
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            glViewport(0, 0, width, height);
         }
-        projMatrix = glm::perspective(glm::radians(35.0f), (float)width / (float)height, 0.1f, 100.0f);
+
+        // Enable depth test
+        glEnable(GL_DEPTH_TEST);
+
+        // Clear the framebuffer
+        if (TASK == 1 || TASK == 2) {
+            glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+        }
+        if (TASK == 3 || TASK == 4) {
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Bind your program
+        program.bind();
+        program.bindVertexAttribArray("position", VBO);
+        program.bindVertexAttribArray("normal", NBO);
+        if (TASK == 1 || TASK == 2 || TASK == 3) {
+            program.bindVertexAttribArray("texcoord", TBO);
+        }
 
         // Bind your VAO (not necessary if you have only one)
         VAO.bind();
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_BUFFER, TBO_tex);
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_BUFFER, TBO_tex2);
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO2);
-
-        // bvh
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_BUFFER, TBO_tex_bvh);
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO3);
-
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_BUFFER, TBO_tex_tria);
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, TBO4);
 
         // bind your element array
         IndexBuffer.bind();
 
-        // Bind your program
-        program.bind();
-
-        // Set the uniform values
-        glUniform3f(program.uniform("triangleColor"), 0.79f, 0.75f, 0.9f);
-        glUniform3f(program.uniform("camPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+        // matrix calculations
+        viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+        projMatrix = glm::perspective(glm::radians(35.0f), (float)width / (float)height, 0.1f, 100.0f);
         glUniformMatrix4fv(program.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
         glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
         glUniformMatrix4fv(program.uniform("projMatrix"), 1, GL_FALSE, glm::value_ptr(projMatrix));
+    
+        // Set the uniform values
+        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
+        glUniform3f(program.uniform("camPos"), cameraPos.x, cameraPos.y, cameraPos.z);
         // direction towards the light
         glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, 3.0f)));
         // x: ambient; 
         glUniform3f(program.uniform("lightParams"), 0.1f, 50.0f, 0.0f);
-
-        // Clear the framebuffer
-        glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Enable depth test
-        glEnable(GL_DEPTH_TEST);
         
+        // globe
+        if (TASK == 1 || TASK == 2 || TASK == 3) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, globeTex);
+            glUniform1i(program.uniform("globeTex"), 0);
+        }
+        
+        // TASK
+        glUniform1i(program.uniform("task"), TASK);
+
         // Draw a triangle
         //glDrawArrays(GL_TRIANGLES, 0, V.size());
         glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
-        //glDrawElements(GL_LINES, T.size() * 3, GL_UNSIGNED_INT, 0);
+
+        if (TASK == 2 || TASK == 3 || TASK == 4) {
+            glDisableVertexAttribArray(VBO.id);
+            glDisableVertexAttribArray(NBO.id);
+            glDisableVertexAttribArray(TBO.id);
+            
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, width, height);
+
+            if (TASK == 2) {
+                glDisable(GL_DEPTH_TEST);
+                glClear(GL_COLOR_BUFFER_BIT);
+            }
+            if (TASK == 3 || TASK == 4) {
+                glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            }
+
+            programScreen.bind();
+            programScreen.bindVertexAttribArray("quadPos", quadVBO);
+            programScreen.bindVertexAttribArray("quadTexcoord", quadTBO);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, renderedTex);
+            glUniform1i(programScreen.uniform("renderedTex"), 0);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, gPosition);
+            glUniform1i(programScreen.uniform("gPosition"), 1);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, gNormal);
+            glUniform1i(programScreen.uniform("gNormal"), 2);
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, gColor);
+            glUniform1i(programScreen.uniform("gColor"), 3);
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, gDepth);
+            glUniform1i(programScreen.uniform("gDepth"), 4);
+
+            glUniform3f(programScreen.uniform("camPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+            glUniform3fv(programScreen.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, 3.0f))); 
+            glUniform3f(programScreen.uniform("lightParams"), 0.1f, 50.0f, 0.0f);
+            
+            glUniform1i(programScreen.uniform("task"), TASK);
+            glUniform2f(programScreen.uniform("resolution"), winWidth, winHeight);
+
+            glUniform1i(programScreen.uniform("vignette"), vignette);
+            glUniform1f(programScreen.uniform("vIntensity"), 15.0f);
+            glUniform1f(programScreen.uniform("vAmount"), 0.25f);
+            glUniform1i(programScreen.uniform("luminance"), luminance);
+            glUniform3f(programScreen.uniform("lumWeight"), 0.3f, 0.3f, 0.4f);
+            glUniform1i(programScreen.uniform("brightness"), brightness);
+            glUniform1f(programScreen.uniform("bAmount"), 0.5f); // 0-1
+            glUniform1i(programScreen.uniform("contrast"), contrast);
+            glUniform1f(programScreen.uniform("cAmount"), 1.0f);
+            glUniform1f(programScreen.uniform("exposure"), exposure);
+            glUniform1f(programScreen.uniform("eAmount"), 1.0f);
+            glUniform1f(programScreen.uniform("gamma"), gamma);
+            glUniform1f(programScreen.uniform("gAmount"), 1.0f);
+            glUniform1f(programScreen.uniform("negative"), negative);
+            glUniform1f(programScreen.uniform("saturation"), saturation);
+            glUniform3f(programScreen.uniform("satWeight"), 0.3f, 0.3f, 0.4f);
+            glUniform1f(programScreen.uniform("sAmount"), 0.5f);
+
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            glDisableVertexAttribArray(quadVBO.id);
+            glDisableVertexAttribArray(quadTBO.id);
+
+            float curr = glfwGetTime();
+            dt = curr - last;
+            last = curr;
+
+            //Particles->Update(dt, 2, glm::vec2(0.0f));
+            //Particles->Draw();
+        }
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
@@ -1292,7 +888,9 @@ int main(void)
     // Deallocate opengl memory
     program.free();
     VAO.free();
+    quadVAO.free();
     VBO.free();
+    quadVBO.free();
 
     // Deallocate glfw internals
     glfwTerminate();
