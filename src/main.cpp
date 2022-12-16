@@ -992,13 +992,13 @@ int main(void)
     td.maxIndex = truncatedCone(0.5f, 0.8f, 30, 0.5, td.vertices, td.normals, td.indices, td.texCoords);
     //td.offset(glm::vec3(1.0, -1.0, 0.0));
     td.color = glm::vec3(0.0, 1.0, 0.0);
-    //objs.push_back(&td);
+    objs.push_back(&td);
 
     Capsule tf(0.2, 0.8, 20, 20);
     tf.maxIndex = capsule(0.2, 0.2, 30, 30, 0.8, tf.vertices, tf.normals, tf.indices, tf.texCoords);
     tf.offset(glm::vec3(-1.0, 0.0, 0.0));
     tf.color = glm::vec3(1.0, 0.5, 0.0);
-    //objs.push_back(&tf);
+    objs.push_back(&tf);
 
     Cone tg(0.2, 0.4, 30);
     tg.maxIndex = cone(0.2, 30, 0.4, tg.vertices, tg.normals, tg.indices, tg.texCoords);
@@ -1026,13 +1026,13 @@ int main(void)
 
     Plane te3(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
     te3.offset(glm::vec3( 0.0f, 0.0f, -6.0f));
-    te3.reflect = false;
+    te3.reflect = true;
     te3.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te3);
 
     Plane te4(glm::vec3(-10.0f, 10.0f, 0.0f), glm::vec3(10.0f, 10.0f, 0.0f));
     te4.offset(glm::vec3( 0.0f, .0f, 6.0f));
-    te4.reflect = false;
+    te4.reflect = true;
     te4.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te4);
 
