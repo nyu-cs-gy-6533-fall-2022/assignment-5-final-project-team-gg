@@ -8,7 +8,7 @@
 
 class Light {
 public:
-    Light(int identifier = 0, float Ia = 0.1f, float Ii = 0.3f, glm::vec3 direction = glm::vec3(0.0, 0.0, 0.0)) {
+    Light(int identifier = 0, float Ia = 0.1f, float Ii = 1.0f, glm::vec3 direction = glm::vec3(0.0, 0.0, 0.0)) {
         this->identifier = identifier;
         I_a = Ia;
         I_i = Ii;

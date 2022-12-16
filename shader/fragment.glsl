@@ -58,8 +58,8 @@ Triangle get_triangle(int i){
     triangle.n1 = texelFetch(tria, 8 * i + 3).rgb;
     triangle.n2 = texelFetch(tria, 8 * i + 4).rgb;
     triangle.n3 = texelFetch(tria, 8 * i + 5).rgb;
-    //triangle.color = texelFetch(tria, 8 * i + 6).rgb;
-    triangle.color = vec3(texture(tex, TexCoords));
+    triangle.color = texelFetch(tria, 8 * i + 6).rgb;
+    //triangle.color = vec3(texture(tex, TexCoords));
     vec3 temp = texelFetch(tria,8 * i + 7).rgb;
     triangle.is_reflecting = temp.r >= 1;
     triangle.is_light = temp.g >= 1;

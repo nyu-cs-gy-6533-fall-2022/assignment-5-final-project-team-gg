@@ -63,6 +63,7 @@ glm::vec3 cameraUp;
 glm::vec3 cameraRight;
 glm::mat4 viewMatrix;
 glm::mat4 projMatrix;
+glm::mat4 modelMatrix;
 
 float camRadius = 5.0f;
 bool firstMouse = true;
@@ -479,7 +480,6 @@ unsigned int truncatedCone(float topRadius, float baseRadius, int sectorCount, f
         // k1 => k1+1 => k2
         indices.push_back(glm::ivec3(k1, k2, k1 + 1));
 
-
         // k2 => k1+1 => k2+1
         indices.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
         maxElementIndice = std::max(maxElementIndice, std::max(k1, k2));
@@ -696,36 +696,34 @@ static void cursor_position_callback(GLFWwindow* window, double xposIn, double y
 {
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; 
+    float sensitivity = 0.5f; 
+    glm::vec3 front;
 
-    if (firstMouse)
-    {
+    if (firstMouse){
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
     }
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
     lastX = xpos;
     lastY = ypos;
 
-    float sensitivity = 0.5f; // change this value to your liking
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
     yaw += xoffset;
     pitch += yoffset;
 
-    // make sure that when pitch is out of bounds, screen doesn't get flipped
     if (pitch > 89.0f)
         pitch = 89.0f;
     if (pitch < -89.0f)
         pitch = -89.0f;
-
-    glm::vec3 front;
-    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    float xz = cos(glm::radians(pitch));
+    front.x = cos(glm::radians(yaw)) * xz;
     front.y = sin(glm::radians(pitch));
-    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * xz;
     cameraDirection = glm::normalize(front);
 }
 
@@ -773,12 +771,20 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     case GLFW_KEY_RIGHT:
         cameraPos += glm::normalize(glm::cross(cameraDirection, cameraUp)) * 0.25f;
         break;
+    case GLFW_KEY_1:
+        modelMatrix = glm::scale( modelMatrix, glm::vec3(1.1) );
+        break;
+    case GLFW_KEY_2:
+        modelMatrix = glm::scale( modelMatrix, glm::vec3(0.9) );
+        break;
+
     case GLFW_KEY_R:
         cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
         cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         cameraDirection = glm::normalize(cameraPos - cameraTarget);
         cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
+        modelMatrix = glm::mat4(1.0);
         break;
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
@@ -956,7 +962,7 @@ int main(void)
 
 
     // initialize model matrix
-    glm::mat4 modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::mat4(1.0f);
 
     // 1: generate sphere, 0: load OFF model
 #if 1
@@ -972,7 +978,7 @@ int main(void)
 
     Torus tb(0.5f, 0.2f, 30, 30);
     tb.maxIndex = torus(0.5f, 0.2f, 30, 30, tb.vertices, tb.normals, tb.indices, tb.texCoords);
-    //tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
+    tb.offset(glm::vec3(0.0f, 1.0f, 0.0f));
     objs.push_back(&tb);
 
 
@@ -994,6 +1000,19 @@ int main(void)
     tf.color = glm::vec3(1.0, 0.5, 0.0);
     objs.push_back(&tf);
 
+    Cone tg(0.2, 0.4, 30);
+    tg.maxIndex = cone(0.2, 30, 0.4, tg.vertices, tg.normals, tg.indices, tg.texCoords);
+    tg.color = glm::vec3(0.0, 0.5, 0.9);
+    objs.push_back(&tg);
+
+
+    Cylinder th(0.2, 0.3, 30);
+    th.maxIndex = cylinder(0.2, 30, 0.3, th.vertices, th.normals, th.indices, th.texCoords);
+    th.color = glm::vec3(0.1, 0.1, 0.1);
+
+    th.offset(glm::vec3(0.0, 0.0, 1.0));
+    objs.push_back(&th);
+
     Plane te(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
     te.offset(glm::vec3( 0.0f, 6.0f, 0.0f));
     te.reflect = false;
@@ -1001,7 +1020,7 @@ int main(void)
     //objs.push_back(&te);    
 
     Plane te2(glm::vec3(-10.0f, 0.0f, -10.0f), glm::vec3(10.0f, 0.0f, -10.0f));
-    te2.offset(glm::vec3( 0.0f, -6.0f, 0.0f));
+    te2.offset(glm::vec3( 0.0f, -2.0f, 0.0f));
     te2.reflect = false;
     te2.color = glm::vec3(0.7, 0.7, 0.9);
     objs.push_back(&te2);
@@ -1049,20 +1068,20 @@ int main(void)
     ///////////////////////////////////////////light///////////////////////////////////////////////
     std::vector<Light*> ligs;
 
-    PointLight la(glm::vec3(-0.0f, 4.0f, -0.0f));
+    PointLight la(glm::vec3(-2.0f, 4.0f, -2.0f));
     ligs.push_back(&la);
 
     PointLight lb(glm::vec3(2.0f, 4.0f, 2.0f));
     //ligs.push_back(&lb);
 
     SpotLight lc(glm::vec3(1.0, 1.0, 1.0), glm::vec3(-1.0,-1.0,-1.0), 40);
-    ligs.push_back(&lc);
+    //ligs.push_back(&lc);
 
     DirectionalLight ld(glm::vec3(0.1, -1.0, 0.1));
-    ligs.push_back(&ld);
+    //ligs.push_back(&ld);
 
     Arealight le(glm::vec3(-1.2, 3, -1.3), glm::vec3(-1.4, 3.3, 1), glm::vec3(0.2, 3.2, 0.4));
-    ligs.push_back(&le);
+    //ligs.push_back(&le);
 
     for (Light* i : ligs) {
         TBOlight_prepare(tbo2, i->identifier, i->vertices, i->direction, i->I_a, i->I_i);
