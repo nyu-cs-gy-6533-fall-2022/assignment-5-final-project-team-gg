@@ -602,7 +602,145 @@ unsigned int torus(float outerRadius, float innerRadius, int sectorCount, int st
 ![all](object/all.png)
 
 ## TASK 3: Lights(16%)-Charles
+### Light Class
+```cpp
+class Light {
+public:
+    Light(int identifier = 0, float Ia = 0.2f, float Ii = 1.0f, glm::vec3 direction = glm::vec3(0.0, 0.0, 0.0)) {
+        this->identifier = identifier;
+        I_a = Ia;
+        I_i = Ii;
+        this->direction = direction;
+    }
 
+    float I_a;
+    float I_i;
+
+    // 0: directionection, 1: Point, 2: Spot, 3: area
+    float identifier;
+    std::vector<glm::vec3> vertices;
+    glm::vec3 direction;
+};
+
+// 1: identifier 4: vertex 1: directionection 1:Ia 1:Ii
+
+class directionectionalLight : public Light {
+public:
+    directionectionalLight(glm::vec3 d) : Light() {
+        identifier = 0;
+        for (int i = 0; i < 4; i++) vertices.push_back(glm::vec3(0, 0, 0));
+        direction = d;
+    }
+};
+
+
+class PointLight : public Light {
+public:
+    glm::vec3 position;
+    PointLight(glm::vec3 p) : Light() {
+        identifier = 1;
+
+        position = p;
+        vertices.push_back(position);
+        for (int i = 0; i < 3; i++) vertices.push_back(glm::vec3(0, 0, 0));
+
+    }
+};
+
+
+class SpotLight : public Light {
+public:
+    SpotLight(glm::vec3 p, glm::vec3 d, float a) : Light() {
+        identifier = 2;
+
+        vertices.push_back(p);
+        vertices.push_back(glm::vec3(a, 0.0, 0.0));
+        for (int i = 0; i < 2; i++) vertices.push_back(glm::vec3(0, 0, 0));
+
+        direction = d;
+
+    }
+};
+
+
+class Arealight : public Light {
+public:
+    Arealight(glm::vec3 v1, glm::vec3 v2, glm::vec3 center) : Light() {
+        identifier = 3;
+
+        glm::vec3 v3, v4;
+        v3 = center + (center - v1);
+        v4 = center + (center - v2);
+        vertices.push_back(v1);
+        vertices.push_back(v2);
+        vertices.push_back(v3);
+        vertices.push_back(v4);
+
+        direction = glm::normalize( glm::cross((v1 - center), (v2 - center)) );
+
+    }
+
+};
+```
+### pass data to tbo
+```cpp
+void TBOlight_prepare(std::vector<float>& tbo, int id, 
+    std::vector<glm::vec3>& vertex,
+    glm::vec3 direction,
+    float Ia, float Ii) {
+
+    //std::cout << Ia << Ii << std::endl;
+    tbo.push_back((float)id);
+    tbo.push_back(Ia);
+    tbo.push_back(Ii);
+    for (int i = 0; i < 4; ++i) {
+        // positions
+        tbo.push_back(vertex[i].x);
+        tbo.push_back(vertex[i].y);
+        tbo.push_back(vertex[i].z);
+    }
+
+    tbo.push_back(direction.x);
+    tbo.push_back(direction.y);
+    tbo.push_back(direction.z);
+}
+```
+
+### get data in fragement shader
+```cpp
+struct Light{
+    float id;
+    float Ia;
+    float Ii;
+    vec3 p1;
+    vec3 p2;
+    vec3 p3;
+    vec3 p4;
+    vec3 dir;
+};
+
+Light get_light(int i){
+// [id Ia Ii] [p1] [p2] [p3] [p4] [dir]
+    Light light;
+    light.id = texelFetch(tria2, 6 * i).r;
+    light.Ia = texelFetch(tria2, 6 * i).g;
+    light.Ii = texelFetch(tria2, 6 * i).b;
+    light.p1 = texelFetch(tria2, 6 * i + 1).rgb;
+    light.p2 = texelFetch(tria2, 6 * i + 2).rgb;
+    light.p3 = texelFetch(tria2, 6 * i + 3).rgb;
+    light.p4 = texelFetch(tria2, 6 * i + 4).rgb;
+    light.dir = texelFetch(tria2, 6 * i + 5).rgb;
+    return light;
+}
+```
+### Directional light
+![directional](light/directional.png)
+### Point light
+![point](light/point.png)
+### Spot light
+![Spot](light/Spot.png)
+### Area light
+![Area](light/area.png)
 
 ## TASK 4: Ray Tracing(16%)-Nick
 
