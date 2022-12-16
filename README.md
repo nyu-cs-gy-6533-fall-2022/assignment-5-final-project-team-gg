@@ -766,6 +766,215 @@ Light get_light(int i){
 ![multiple](light/multiple.png)
 
 ## TASK 4: Ray Tracing(16%)-Nick
+### send vertices, normals, indices to tbo in form of triangle
+```cpp
+void TBO_prepare(std::vector<float>& tbo, std::vector<glm::vec3>& vertex, std::vector<glm::vec3>& normal, 
+                    std::vector<glm::ivec3>& tria, glm::vec3 col, bool is_reflecing, bool is_light){
+    std::cout<<tria.size()<<std::endl;
+    for(int i = 0; i < tria.size(); ++i){
+        // positions
+        tbo.push_back(vertex[tria[i].x].x);
+        tbo.push_back(vertex[tria[i].x].y);
+        tbo.push_back(vertex[tria[i].x].z);
+        tbo.push_back(vertex[tria[i].y].x);
+        tbo.push_back(vertex[tria[i].y].y);
+        tbo.push_back(vertex[tria[i].y].z);
+        tbo.push_back(vertex[tria[i].z].x);
+        tbo.push_back(vertex[tria[i].z].y);
+        tbo.push_back(vertex[tria[i].z].z);
+        // normal
+        tbo.push_back(normal[tria[i].x].x);
+        tbo.push_back(normal[tria[i].x].y);
+        tbo.push_back(normal[tria[i].x].z);
+        tbo.push_back(normal[tria[i].y].x);
+        tbo.push_back(normal[tria[i].y].y);
+        tbo.push_back(normal[tria[i].y].z);
+        tbo.push_back(normal[tria[i].z].x);
+        tbo.push_back(normal[tria[i].z].y);
+        tbo.push_back(normal[tria[i].z].z);
+        // color
+        tbo.push_back(col.x);
+        tbo.push_back(col.y);
+        tbo.push_back(col.z);
+        // is_reflecing
+        if(is_reflecing) tbo.push_back(5);
+        else tbo.push_back(0);
+        // is_light
+        if(is_light) tbo.push_back(5);
+        else tbo.push_back(0);
+        tbo.push_back(0);
+    }
+}
+```
+### read data in fragment shader
+```cpp
+struct Triangle{
+    vec3 v1;
+    vec3 v2;
+    vec3 v3; // vectices of the triangle
+    vec3 n1;
+    vec3 n2;
+    vec3 n3; // normals of the triangle
+    vec3 color;
+    bool is_reflecting;
+    bool is_light;
+    int id;
+};
+
+Triangle get_triangle(int i){
+    Triangle triangle;
+    triangle.v1 = texelFetch(tria, 8 * i).rgb;
+    triangle.v2 = texelFetch(tria, 8 * i + 1).rgb;
+    triangle.v3 = texelFetch(tria, 8 * i + 2).rgb;
+    triangle.n1 = texelFetch(tria, 8 * i + 3).rgb;
+    triangle.n2 = texelFetch(tria, 8 * i + 4).rgb;
+    triangle.n3 = texelFetch(tria, 8 * i + 5).rgb;
+    triangle.color = texelFetch(tria, 8 * i + 6).rgb;
+    //triangle.color = vec3(texture(tex, TexCoords));
+    vec3 temp = texelFetch(tria,8 * i + 7).rgb;
+    triangle.is_reflecting = temp.r >= 1;
+    triangle.is_light = temp.g >= 1;
+    triangle.id = i;
+    return triangle;
+}
+```
+### Ray & Intersection
+```cpp
+struct Ray{
+    vec3 ray_origin;
+    vec3 ray_dir;
+};
+
+struct Intersection{
+    vec3 position;
+    vec3 normal;
+    vec3 color;
+    float d; // distance
+    bool is_intersecting;
+    bool is_reflecting;
+    bool is_light;
+    int triangle_id;
+};
+
+// ray triangle intersection
+Intersection intersect(Ray ray, Triangle triangle){
+    Intersection inter;
+    // initialize a non-intersection
+    inter.is_intersecting = false;
+    inter.is_reflecting = false;
+    inter.is_light = false;
+    inter.color = vec3(0);
+    inter.d = -1;
+    inter.triangle_id = -1;
+    vec3 n = normalize(cross(triangle.v1 - triangle.v2, triangle.v2 - triangle.v3));
+    float perpen = dot(ray.ray_dir, n);
+    if(perpen == 0) 
+        return inter;
+    float t = dot((triangle.v1 - ray.ray_origin), n) / perpen;
+
+    if(t < 0)
+        return inter;
+
+    vec3 intersection_point = ray.ray_origin + ray.ray_dir * t;
+    vec3 v0 = triangle.v3 - triangle.v1;
+    vec3 v1 = triangle.v2 - triangle.v1;
+    vec3 v2 = intersection_point - triangle.v1;
+
+    float dot_00 = dot(v0, v0);
+    float dot_01 = dot(v0, v1);
+    float dot_02 = dot(v0, v2);
+    float dot_11 = dot(v1, v1);
+    float dot_12 = dot(v1, v2);
+
+    float inverse_denom = 1.0 / (dot_00 * dot_11 - dot_01 * dot_01);
+    float u = (dot_11 * dot_02 - dot_01 * dot_12) * inverse_denom;
+    float v = (dot_00 * dot_12 - dot_01 * dot_02) * inverse_denom;
+
+    if ((u >= 0) && (v >= 0) && (u + v < 1)){
+        if(perpen>0)   
+            inter.normal = -n;
+        else
+            inter.normal = n;
+        inter.position = intersection_point;
+        inter.color = triangle.color;
+        inter.is_intersecting = true;
+        inter.is_reflecting = triangle.is_reflecting;
+        inter.is_light = triangle.is_light;
+        inter.d = t;
+        inter.triangle_id = triangle.id;
+        return inter; 
+    } 
+    else 
+        return inter;
+}
+```
+
+### Ray tracer
+use stack iteration to replace recursion
+```cpp
+vec3 ray_tracing(){
+    int depth = 10;
+    vec3 currentColor, result = vec3(0.0);
+    vec3 pos_temp = camPos;
+    vec3 dir_temp = normalize(pos - camPos);
+    Intersection inter_buffer[10];
+    int current_depth = 0;
+    int current_id = -1;
+    for(int i = 0; i < depth; ++i){
+        Ray ray = Ray(pos_temp, dir_temp);
+        float min_distance = -1;
+        Intersection inter;
+        for(int j = 0; j < tbo_size; ++j){
+            // generate the triangle
+            Triangle triangle = get_triangle(j);
+            Intersection temp_inter = intersect(ray, triangle);
+            if(temp_inter.is_intersecting && (temp_inter.d < min_distance || min_distance < 0)
+                && current_id != temp_inter.triangle_id){
+                min_distance = temp_inter.d;
+                inter = temp_inter;
+            }
+        }
+        if(!inter.is_intersecting){
+            inter.color = vec3(1,0,0);
+            break;
+        }
+        inter_buffer[i] = inter;
+        current_id = inter.triangle_id;
+        if(!inter.is_reflecting){
+            break;
+        }
+        else{
+            current_depth++;
+            pos_temp = inter.position;
+            dir_temp = normalize(reflect(dir_temp, inter.normal));
+        }
+    }
+    currentColor = inter_buffer[current_depth].color;
+    for(int k = current_depth; k >=0; --k){
+        if(inter_buffer[k].is_reflecting){
+            result -= vec3(0.03,0.03,0.03);
+            continue;
+        }
+        for(int i = 0; i < tbo_size2; i++){
+            Light l = get_light(i);
+            vec3 temp;
+            temp = shadow2(inter_buffer[k], l);
+            if(  temp != vec3(-1.0) ){
+                currentColor = temp;
+            }else{
+                currentColor = Phong3(inter_buffer[k].color, inter_buffer[k].normal, inter_buffer[k].position, camPos, l);
+            }
+            result += currentColor;
+        }
+    }
+    return clamp(result, 0.0, 1.0);
+}
+```
+
+### Reflection
+![reflect1](raytracing/reflection1.png)
+![reflect2](raytracing/reflection2.png)
+![reflect3](raytracing/reflection3.png)
 
 
 ## TASK 5: Spatial Data Structure(20%)-Nick
