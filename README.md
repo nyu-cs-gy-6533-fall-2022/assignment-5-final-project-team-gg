@@ -763,7 +763,7 @@ Light get_light(int i){
     }
     return clamp(result, 0.0, 1.0);
 ```
-![multiple](light/mulitple)
+![multiple](light/multiple.png)
 
 ## TASK 4: Ray Tracing(16%)-Nick
 
