@@ -11,6 +11,12 @@ uniform samplerBuffer tria2;
 uniform int tbo_size;
 uniform int tbo_size2;
 
+// bvh
+uniform samplerBuffer bvh;
+uniform samplerBuffer bvh_tria;
+uniform int bvh_size;
+uniform int tria_size;
+
 uniform vec3 triangleColor;
 uniform vec3 lightPos;
 uniform vec3 lightParams;
@@ -18,9 +24,14 @@ uniform vec3 camPos;
 
 float epsilon = 0.0001;
 
+// simulate the stack
+//int my_stack[gl_MaxVertexUniformComponents];
+int my_stack[1000];
+
 struct Ray{
     vec3 ray_origin;
     vec3 ray_dir;
+    vec3 ray_inverse_dir;
 };
 
 struct Intersection{
@@ -147,6 +158,59 @@ Intersection intersect(Ray ray, Triangle triangle){
         return inter;
 }
 
+bool r_p(Ray r, BVH b) {
+    vec3 dirfrac;
+    dirfrac.x = 1.0f / r.ray_dir.x;
+    dirfrac.y = 1.0f / r.ray_dir.y;
+    dirfrac.z = 1.0f / r.ray_dir.z;
+    // lb is the corner of AABB with minimal coordinates - left bottom, rt is maximal corner
+    // r.org is origin of ray
+    float t1 = (b.minv.x - r.ray_origin.x)*dirfrac.x;
+    float t2 = (b.maxv.x - r.ray_origin.x)*dirfrac.x;
+    float t3 = (b.minv.y - r.ray_origin.y)*dirfrac.y;
+    float t4 = (b.maxv.y - r.ray_origin.y)*dirfrac.y;
+    float t5 = (b.minv.z - r.ray_origin.z)*dirfrac.z;
+    float t6 = (b.maxv.z - r.ray_origin.z)*dirfrac.z;
+
+    float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+    float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
+    float t;
+    // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+    if (tmax < epsilon)
+    {
+        t = tmax;
+        return false;
+    }
+
+    // if tmin > tmax, ray doesn't intersect AABB
+    if (tmin > tmax)
+    {
+        t = tmax;
+        return false;
+    }
+
+    t = tmin;
+    return true;
+}
+
+bool intersect_plane(Ray ray,BVH _bvh){
+    vec3 minn = (_bvh.minv - ray.ray_origin) * (- ray.ray_dir);
+    vec3 maxx = (_bvh.maxv - ray.ray_origin) * (- ray.ray_dir);
+
+    vec3 t1 = vec3( sign(ray.ray_dir).x >= 0 ? minn.x : maxx.x,
+                    sign(ray.ray_dir).y >= 0 ? minn.y : maxx.y,
+                    sign(ray.ray_dir).z >= 0 ? minn.z : maxx.z);
+    vec3 t2 = vec3( sign(ray.ray_dir).x >= 0 ? maxx.x : minn.x,
+                    sign(ray.ray_dir).y >= 0 ? maxx.y : minn.y,
+                    sign(ray.ray_dir).z >= 0 ? maxx.z : minn.z);
+    float max_t1 = max(t1.x, max(t1.y, t1.z));
+    float min_t2 = min(t2.x, min(t2.y, t2.z));
+    if(min_t2 >= max_t1 && min_t2 >= 0){
+        return true;
+    }
+    return false;
+}
 
 vec3 Phong(vec3 color, vec3 normal, vec3 light_pos, vec3 pos, vec3 cam_pos, vec3 light_para){
     normal = normalize(normal);
@@ -191,7 +255,7 @@ vec3 Phong1(vec3 color, vec3 normal, vec3 pos, vec3 cam_pos){
 bool shadow(Intersection inter){
     vec3 position = inter.position;
     int id = inter.triangle_id;
-    Ray ray = Ray(position, normalize(lightPos - pos));
+    Ray ray = Ray(position, normalize(lightPos - pos), -normalize(lightPos - pos));
     for(int j = 0; j < tbo_size; ++j){
         // generate the triangle
         Triangle triangle = get_triangle(j);
@@ -218,7 +282,7 @@ int shadow2(Intersection inter){
                 case 0:
                     break;
                 case 1:
-                    ray = Ray(position, normalize(l.p1 - position));
+                    ray = Ray(position, normalize(l.p1 - position), -normalize(l.p1 - position));
                     temp_inter = intersect(ray, triangle);
                     if(temp_inter.is_intersecting && id != triangle.id && temp_inter.d > 0 
                         && temp_inter.d < length(l.p1 - position)){
@@ -234,6 +298,52 @@ int shadow2(Intersection inter){
     return count;
 }
 
+Intersection non_bvh_inter(Ray ray, int current_id){
+    float min_distance = -1;
+    Intersection inter;
+    for(int j = 0; j < tbo_size; ++j){
+        // generate the triangle
+        Triangle triangle = get_triangle(j);
+        Intersection temp_inter = intersect(ray, triangle);
+        if(temp_inter.is_intersecting && (temp_inter.d < min_distance || min_distance < 0)
+            && current_id != temp_inter.triangle_id){
+            min_distance = temp_inter.d;
+            inter = temp_inter;
+        }
+    }
+    return inter;
+}
+
+Intersection bvh_inter(Ray ray, int current_id){
+    int i = 0;
+	int pnode = 0;
+	my_stack[i] = 0;
+	float minDistance = -3;
+	Intersection inter = Intersection(vec3(0), vec3(0), vec3(0), -2, false, false, false, -2);
+	while(i >= 0){
+		pnode = my_stack[i];
+		i -= 1;
+		BVH root = BVH(texelFetch(bvh, pnode).rgb, texelFetch(bvh, pnode+1).rgb);
+		bool is_intersect = r_p(ray, root);
+		int idx = int(texelFetch(bvh,pnode+2).r);
+		if( is_intersect && (idx<0)){
+			my_stack[i+1] = 2 * pnode + 3;
+			my_stack[i+2] = 2 * pnode + 6;
+			i+=2;
+		}
+		else if(is_intersect || idx >= 0){
+			Triangle t = get_triangle(idx);
+			Intersection temp = intersect(ray, t);
+			if(temp.is_intersecting && ( minDistance == -3 || temp.d < minDistance) 
+                && current_id != temp.triangle_id){
+				minDistance = temp.d;
+				inter = temp;
+			}
+		}
+	}
+	return inter;
+}
+
 vec3 ray_tracing(){
     Light l = get_light(0);
     int depth = 10;
@@ -244,19 +354,8 @@ vec3 ray_tracing(){
     int current_depth = 0;
     int current_id = -1;
     for(int i = 0; i < depth; ++i){
-        Ray ray = Ray(pos_temp, dir_temp);
-        float min_distance = -1;
-        Intersection inter;
-        for(int j = 0; j < tbo_size; ++j){
-            // generate the triangle
-            Triangle triangle = get_triangle(j);
-            Intersection temp_inter = intersect(ray, triangle);
-            if(temp_inter.is_intersecting && (temp_inter.d < min_distance || min_distance < 0)
-                && current_id != temp_inter.triangle_id){
-                min_distance = temp_inter.d;
-                inter = temp_inter;
-            }
-        }
+        Ray ray = Ray(pos_temp, dir_temp, -dir_temp);
+        Intersection inter = bvh_inter(ray, current_id);
         if(!inter.is_intersecting){
             inter.color = vec3(1,1,1);
             break;
@@ -292,10 +391,22 @@ vec3 ray_tracing(){
     return result;
 }
 
+
+
+
+
+
 void main()
 {
     vec3 col = ray_tracing();
 //    Light l = get_light(0);
 //    vec3 col = vec3(l.Ia, 0.0, 0.0);
     outColor = vec4(col, 1.0);
+
+    // BVH b = BVH(vec3(-1,-1,1), vec3(1,1,2));
+    // Ray r = Ray(vec3(0,0,0), vec3(0,0,1), vec3(0,0,-1));
+    // bool a = r_p(r, b);
+    // if(a) outColor = vec4(1,0,0,1);
+    // else outColor = vec4(0,0,1,1);
+    
 }

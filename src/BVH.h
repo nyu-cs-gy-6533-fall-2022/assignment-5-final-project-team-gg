@@ -123,15 +123,15 @@ bvh* create_bvh(std::vector<Triangle>& tria, int begin, int end, int axis){
     switch(axis){
         case 0: // x-axis
             _bvh->left = create_bvh(tria, begin, begin + (end - begin) / 2, 1);
-            _bvh->left = create_bvh(tria, begin + (end - begin) / 2, end, 1);
+            _bvh->right = create_bvh(tria, begin + (end - begin) / 2, end, 1);
             break;
         case 1: // y-axis
             _bvh->left = create_bvh(tria, begin, begin + (end - begin) / 2, 2);
-            _bvh->left = create_bvh(tria, begin + (end - begin) / 2, end, 2);
+            _bvh->right = create_bvh(tria, begin + (end - begin) / 2, end, 2);
             break;
         case 2: // z-axis
             _bvh->left = create_bvh(tria, begin, begin + (end - begin) / 2, 0);
-            _bvh->left = create_bvh(tria, begin + (end - begin) / 2, end, 0);
+            _bvh->right = create_bvh(tria, begin + (end - begin) / 2, end, 0);
             break;
     }
     return _bvh;
